@@ -52,7 +52,7 @@ test('intake identity: no competition when c ≥ 2, finder loses (1−s2)g when 
 });
 
 test('deception: liar (h2 = 0) out-eats the honest partner when c < 2', () => {
-  const ss = steadyState({ ...baseParams, h2: 0 });
+  const ss = steadyState({ ...baseParams, c: 1.5, h2: 0 });
   assert.ok(ss.e[1] > ss.e[0]);
   assert.ok(ss.y[4] > 0.1, 'honest listener spends time misled');
 });
@@ -69,9 +69,11 @@ test('RK4 convergence: halving dt changes the steady state by < 1e-8', () => {
 });
 
 test('phase line finds an interior d* when patches are large', () => {
-  const pl = phaseLine({ ...baseParams, c: 2 });
-  assert.ok(pl.dstar > 20 && pl.dstar < 300, `d* = ${pl.dstar}`);
-  assert.ok(pl.Gmax > soloBaseline({ ...baseParams, c: 2, d: pl.dstar }).G);
+  const pl = phaseLine(baseParams);
+  assert.ok(pl.dstar > 40 && pl.dstar < 120, `d* = ${pl.dstar}`);
+  const unstable = pl.equilibria.find(e => !e.stable);
+  assert.ok(unstable && unstable.d > 300 && unstable.d < 600, 'unstable point ~420 m');
+  assert.ok(pl.Gmax > pl.Gfar * 1.05, 'communication beats the far-apart silent pair');
 });
 
 test('Layer C gains are finite numbers', () => {

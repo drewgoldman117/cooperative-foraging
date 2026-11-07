@@ -1,6 +1,6 @@
 // main.js — wires sim + loop + scene + HUD + charts + sections. The only file that knows all of them.
 import { createWorld } from './sim/abm.js';
-import { baseParams, steadyState } from './sim/model.js';
+import { baseParams, steadyState, Gsilent, dddt } from './sim/model.js';
 import { createLoop } from './sim/loop.js';
 import { PRESETS, presetById } from './sim/presets.js';
 import { createScene } from './render/scene.js';
@@ -61,6 +61,7 @@ const ctl = {
   applyPreset(id, { restart = true } = {}) {
     const pr = presetById[id]; if (!pr) return;
     ctl.setParams({ ...baseParams, ...pr.params }, { restart });
+    ctl.setAdapt(!!pr.adaptD);
     document.querySelectorAll('#presets button').forEach(b => b.classList.toggle('active', b.dataset.id === id));
     $('preset-blurb').textContent = pr.blurb;
     ctl.currentPreset = id;
@@ -69,6 +70,8 @@ const ctl = {
   get paused() { return loop.paused; }, set paused(v) { loop.paused = v; $('tr-play').textContent = v ? '▶' : '❚❚'; },
   moveArena, hist, get scene() { return scene; }, get audio() { return audio; }, get ssCache() { return ssCache; },
   show(key, v) { if (scene) scene.show[key] = v; },
+  adaptD: false, etaDemo: 2.5e4,   // Layer B on screen: η is a time scale only; this value moves d ~100 m per hour
+  setAdapt(v) { ctl.adaptD = v; adaptBtn && adaptBtn.classList.toggle('active', v); },
 };
 window.__demo = ctl;
 
@@ -96,6 +99,9 @@ for (const [k, name] of [['rings', 'contact rings'], ['trails', 'trails'], ['bel
 const camBtn = document.createElement('button'); camBtn.textContent = 'camera: follow';
 camBtn.onclick = () => { scene.cam.mode = scene.cam.mode === 'follow' ? 'fit' : 'follow'; camBtn.textContent = 'camera: ' + scene.cam.mode; };
 tog.appendChild(camBtn);
+const adaptBtn = document.createElement('button'); adaptBtn.textContent = 'spacing adapts (Layer B)';
+adaptBtn.onclick = () => ctl.setAdapt(!ctl.adaptD);
+tog.appendChild(adaptBtn);
 const seedBtn = document.createElement('button'); seedBtn.textContent = 'new forest';
 seedBtn.onclick = () => ctl.reset(seed + 1);
 tog.appendChild(seedBtn);
@@ -116,15 +122,19 @@ const chOcc = createLiveChart($('ch-occ'), { yLabel: 'fraction', yRange: [0, 1],
   { color: '#9BB3A4', dash: [4, 4], width: 1 }, { color: '#FFD23F', dash: [4, 4], width: 1 }, { color: '#8FFFD8', dash: [4, 4], width: 1 }, { color: '#FF4FD8', dash: [4, 4], width: 1 }] });
 
 // ---- loop ------------------------------------------------------------------------
-let sampleT = -1, chartTick = 0;
+let sampleT = -1, chartTick = 0, adaptT = 0;
 const loop = createLoop({
   dt: 0.05, minPerSec: 1,
   update: dt => {
     world.step(dt);
+    if (ctl.adaptD) {   // Layer B: dd/dt = η dG*/dd, evaluated every 2 sim minutes
+      adaptT += dt;
+      if (adaptT >= 2) { const f = dddt(world.params, world.params.d, 4); const nd = Math.min(900, Math.max(20, world.params.d + ctl.etaDemo * f * adaptT)); adaptT = 0; if (Math.abs(nd - world.params.d) > 0.05) { world.setParam('d', nd); sliders && sliders.sync(world.params); } }
+    }
     if (world.t - sampleT >= 0.5) {
       sampleT = world.t;
       const s = world.summary();
-      const solo = ssCache ? ssCache.solo.e[0] : null;
+      const solo = Gsilent(world.params) / 2;   // best silent alternative per animal (AM2)
       hist.intake.push(world.t, [s.abm[0], s.abm[1], s.odeAvg[0], s.odeAvg[1], solo]);
       hist.sep.push(world.t, [world.separation, world.params.dc, world.params.d]);
       const y = s.odeY;

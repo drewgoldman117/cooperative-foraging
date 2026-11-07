@@ -17,7 +17,8 @@ export const baseParams = Object.freeze({
   v: 30,            // travel speed, m/min
   tauG: 10,         // give-up time after a false lead, min
   dmin: 10,         // min separation in travel-time formula, m
-  c: 1.5,           // patch capacity (animal-equivalents)
+  c: 2.5,           // patch capacity (animal-equivalents) — AM1
+  k: 0,             // shared-fate / relatedness weight in the Layer C payoff π_i = G_i + k G_j — AM3
   q0: 0.8,          // detail / locatability
   eps1: 0.9, eps2: 0.9,   // perceptual accuracy
   h1: 1, h2: 1,           // honesty
@@ -122,6 +123,9 @@ export function steadyState(p, { T = 900, dt = 0.25, tol = 1e-10 } = {}) {
 /** Pair intake G(d) at separation d (all other params from p). */
 export function Gstar(p, d) { return steadyState({ ...p, d }).G; }
 
+/** Best silent alternative (AM2): two solo foragers far apart, G = 2 g λ0/(λ0+μ). */
+export function Gsilent(p) { return 2 * p.g * p.lambda0 / (p.lambda0 + p.mu); }
+
 /** Solo (silent) baseline: σ = 0, same d. */
 export function soloBaseline(p) { return steadyState({ ...p, sigma: 0 }); }
 
@@ -131,19 +135,30 @@ export function dddt(p, d, hstep = 2) {
   return p.eta * dG - p.ka * (d - p.dsoc);
 }
 
-/** Layer B phase line on a grid of d. Returns { d:[], f:[], G:[], dstar } (dstar = stable zero, or null). */
-export function phaseLine(p, { dMin = 20, dMax = 900, n = 60 } = {}) {
+/**
+ * Layer B phase line on a grid of d. Returns { d, f, G, dstar, Gmax, equilibria } where equilibria
+ * lists every zero of f with its stability (AM4: a stable contact point ~70 m and an unstable one
+ * ~420 m beyond which the pair drifts apart).
+ */
+export function phaseLine(p, { dMin = 20, dMax = 900, n = 90 } = {}) {
   const ds = [], Gs = [];
   for (let i = 0; i < n; i++) { const d = dMin + (dMax - dMin) * i / (n - 1); ds.push(d); Gs.push(Gstar(p, d)); }
   const f = ds.map((d, i) => {
     const i0 = Math.max(0, i - 1), i1 = Math.min(n - 1, i + 1);
     return p.eta * (Gs[i1] - Gs[i0]) / (ds[i1] - ds[i0]) - p.ka * (d - p.dsoc);
   });
-  let dstar = null, best = -Infinity;
-  for (let i = 0; i < n; i++) if (Gs[i] > best) { best = Gs[i]; dstar = ds[i]; }
-  // refine: stable zero crossing (f goes + → −) nearest the max
-  for (let i = 0; i < n - 1; i++) if (f[i] > 0 && f[i + 1] <= 0) { const u = f[i] / (f[i] - f[i + 1]); dstar = ds[i] + u * (ds[i + 1] - ds[i]); }
-  return { d: ds, f, G: Gs, dstar, Gmax: best };
+  let best = -Infinity;
+  for (let i = 0; i < n; i++) if (Gs[i] > best) best = Gs[i];
+  const equilibria = [];
+  for (let i = 1; i < n - 1; i++) {
+    if ((f[i] > 0 && f[i + 1] <= 0) || (f[i] < 0 && f[i + 1] >= 0)) {
+      const u = f[i] / (f[i] - f[i + 1]), d = ds[i] + u * (ds[i + 1] - ds[i]);
+      equilibria.push({ d, stable: f[i] > 0, G: Gs[i] + u * (Gs[i + 1] - Gs[i]) });
+    }
+  }
+  const stable = equilibria.filter(e => e.stable);
+  const dstar = stable.length ? stable.reduce((a, b) => (b.G > a.G ? b : a)).d : null;
+  return { d: ds, f, G: Gs, dstar, Gmax: best, equilibria, Gfar: Gsilent(p) };
 }
 
 /**
@@ -152,16 +167,23 @@ export function phaseLine(p, { dMin = 20, dMax = 900, n = 60 } = {}) {
  */
 export function layerCField(p, h, beta) {
   const base = { ...p, h1: h, h2: h, beta1: beta, beta2: beta };
-  const G1 = q => steadyState(q).e[0];
+  const G1 = q => { const e = steadyState(q).e; return e[0] + (p.k || 0) * e[1]; };   // π_1 = G_1 + k G_2 (AM3)
   const dh = p.rh * h * (1 - h) * (G1({ ...base, h1: 1 }) - G1({ ...base, h1: 0 })) / p.g;
   const db = p.rbeta * beta * (1 - beta) * (G1({ ...base, beta1: 1 }) - G1({ ...base, beta1: 0 })) / p.g;
   return [dh, db];
 }
 
+/** Minimum shared-fate weight k for honest–trusting (1,1) to be stable (AM3), by bisection; null if never. */
+export function kCrit(p) {
+  const ok = k => { const g = layerCGains({ ...p, k }, 0.97, 0.97); return g.honestGain > 0 && g.trustGain > 0; };
+  if (ok(0)) return 0; if (!ok(1)) return null;
+  let lo = 0, hi = 1; for (let i = 0; i < 16; i++) { const m = (lo + hi) / 2; ok(m) ? hi = m : lo = m; } return hi;
+}
+
 /** Payoff differences that drive Layer C (sign tells which corner is stable). */
 export function layerCGains(p, h, beta) {
   const base = { ...p, h1: h, h2: h, beta1: beta, beta2: beta };
-  const G1 = q => steadyState(q).e[0];
+  const G1 = q => { const e = steadyState(q).e; return e[0] + (p.k || 0) * e[1]; };
   return { honestGain: G1({ ...base, h1: 1 }) - G1({ ...base, h1: 0 }), trustGain: G1({ ...base, beta1: 1 }) - G1({ ...base, beta1: 0 }) };
 }
 
