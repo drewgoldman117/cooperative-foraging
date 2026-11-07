@@ -47,7 +47,7 @@ export function createWorld({ seed = abmDefaults.seed, params = {}, options = {}
   function makeMonkey(i, x, y) {
     const a = rng() * TAU;
     return {
-      id: i, x, y, ux: Math.cos(a), uy: Math.sin(a), vx: 0, vy: 0, speed: 0,
+      id: i, x, y, px: x, py: y, ux: Math.cos(a), uy: Math.sin(a), vx: 0, vy: 0, speed: 0,
       state: 'S', tree: -1, target: null, believed: null, timer: 0, localT: 0, feedAngle: 0,
       food: 0, foodAt: 0, emote: 'idle', emoteT: 0, callT: 0,
       stats: { found: 0, calls: 0, heard: 0, tipsFollowed: 0, joined: 0, misled: 0, lost: 0 },
@@ -80,6 +80,7 @@ export function createWorld({ seed = abmDefaults.seed, params = {}, options = {}
 
       for (let i = 0; i < 2; i++) {
         const mk = monkeys[i], pt = monkeys[1 - i];
+        mk.px = mk.x; mk.py = mk.y;
         mk.timeIn[mk.state === 'G' ? 'S' : mk.state] += dt;
         mk.emoteT -= dt; mk.callT -= dt;
         switch (mk.state) {
