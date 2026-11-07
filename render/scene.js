@@ -82,7 +82,7 @@ export async function createScene(host, world, { reduced = false, mobile = false
       }
       // day / night
       const phase = (world.t / this.dayLength) % 1;
-      const sun = clamp(0.5 + 0.5 * Math.sin((phase - 0.1) * Math.PI * 2) * 1.4, 0, 1);
+      const sun = clamp(0.5 + 0.5 * Math.sin((phase + 0.15) * Math.PI * 2) * 1.4, 0, 1);   // starts mid-morning
       this.sun = sun;
       // camera: fit both monkeys with padding; min zoom = whole arena
       const W = app.screen.width, H = app.screen.height;

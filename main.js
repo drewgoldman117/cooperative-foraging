@@ -228,3 +228,6 @@ addEventListener('keydown', e => {
 });
 if (url.get('present') === '1') present.toggle();
 if (url.get('mode') === 'sandbox') $('sandbox').scrollIntoView();
+// ?only=sandbox|guided|map|model : show one section (for screenshots and headless checks)
+const only = url.get('only');
+if (only && $(only)) { document.body.classList.add('only'); for (const sec of document.querySelectorAll('section, footer')) sec.style.display = sec.id === only ? '' : 'none'; if (slots[only]) moveArena(slots[only]); }

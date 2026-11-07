@@ -32,7 +32,7 @@ export function createLiveChart(el, { series, height = 140, yLabel = '', yRange 
       { ...AX, size: 26, label: 'sim time (min)', labelSize: 14, labelFont: '11px Inter, sans-serif' },
       { ...AX, size: 42, label: yLabel, labelSize: 14, labelFont: '11px Inter, sans-serif' },
     ],
-    series: [{}, ...series.map(s => ({ stroke: s.color, width: s.width || 1.6, dash: s.dash, fill: s.fill, spanGaps: true }))],
+    series: [{}, ...series.map(s => ({ stroke: s.color, width: s.width || 1.6, dash: s.dash, fill: s.fill, spanGaps: true, points: { show: false } }))],
     bands,
   };
   const n = series.length;

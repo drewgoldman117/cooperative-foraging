@@ -18,11 +18,12 @@ vec2 filterTextureCoord( void ) { return aPosition * (uOutputFrame.zw * uInputSi
 void main(void) { gl_Position = filterVertexPosition(); vTextureCoord = filterTextureCoord(); }
 `;
 const fragment = `
+precision highp float;
 in vec2 vTextureCoord;
 out vec4 finalColor;
 uniform sampler2D uTexture;
-uniform vec4 uInputSize;
-uniform vec4 uOutputFrame;
+uniform highp vec4 uInputSize;
+uniform highp vec4 uOutputFrame;
 uniform float uTime;
 uniform vec3 uTint;
 uniform float uTintAmt;

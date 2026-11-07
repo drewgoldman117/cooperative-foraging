@@ -104,7 +104,7 @@ export function createMonkey(i, layers, name) {
       st.gaitAmp += ((st.moving ? clamp(speed / 60, 0.35, 1) : 0) - st.gaitAmp) * damp(8, dt);
       st.feedT = (mk.state === 'O' || mk.state === 'J') ? st.feedT + dt : 0;
 
-      const s = clamp(1.15 / zoom, 0.55, 1.6);                           // screen-constant size
+      const s = clamp(1.45 / zoom, 0.7, 2.0);                           // screen-constant size
       node.position.set(st.sx, st.sy); node.zIndex = st.sy + 4;
       const bob = Math.sin(st.phase * 2) * 1.2 * st.gaitAmp;
       const breathe = st.moving ? 0 : Math.sin(t * 2.1 + i) * 0.025;

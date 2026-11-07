@@ -64,15 +64,15 @@ nav.top .pill { font-size: 12.5px; padding: 5px 10px; }
 .transport .speed button.active { background: rgba(94,234,212,.15); box-shadow: none; }
 .transport .t { font-family: var(--mono); font-size: 12px; color: var(--muted); padding: 0 6px; min-width: 86px; text-align: right; }
 .counter-strip { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-.counter-strip .c { flex: 1 1 120px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+.counter-strip .c { flex: 1 1 90px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
 .counter-strip .c .k { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .counter-strip .c .v { font-family: var(--mono); font-size: 16px; font-weight: 500; display: flex; gap: 10px; }
 
 /* ---- hero ---- */
 #hero { position: relative; min-height: 92vh; display: grid; place-items: center; overflow: hidden; border-bottom: 1px solid var(--border); }
-#hero .bg { position: absolute; inset: 0; opacity: .55; }
+#hero .bg { position: absolute; inset: 0; opacity: .92; }
 #hero .bg .arena-slot { position: absolute; inset: 0; border: 0; border-radius: 0; box-shadow: none; }
-#hero .veil { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 45%, rgba(11,20,16,.15), rgba(11,20,16,.85) 70%); pointer-events: none; }
+#hero .veil { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 45%, rgba(11,20,16,.28), rgba(11,20,16,.62) 78%); pointer-events: none; }
 #hero .content { position: relative; z-index: 2; text-align: center; max-width: 860px; padding: 40px 20px; }
 #hero .eyebrow { font-family: var(--mono); font-size: 12.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-bottom: 18px; }
 #hero h1 { font-size: clamp(44px, 8vw, 88px); line-height: 1; letter-spacing: -0.03em; text-shadow: 0 10px 40px rgba(0,0,0,.6); }
@@ -101,7 +101,7 @@ nav.top .pill { font-size: 12.5px; padding: 5px 10px; }
 #guided .score.ok { border: 1px solid rgba(94,234,212,.5); } #guided .score.bad { border: 1px solid rgba(255,138,61,.5); }
 #guided .next { margin-top: auto; display: flex; justify-content: space-between; gap: 8px; }
 #guided .foot { display: grid; grid-template-columns: minmax(0,1fr) 360px; border-top: 1px solid var(--border); }
-#guided .foot .chart { padding: 8px 12px 4px; } #guided .foot .ctl { padding: 10px 20px; border-left: 1px solid var(--border); }
+#guided .foot .charts { padding: 8px 12px 4px; } #guided .foot .ctl { padding: 10px 20px; border-left: 1px solid var(--border); }
 .progress { height: 3px; background: var(--border); } .progress i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s linear; }
 
 /* ---- sandbox ---- */
@@ -111,7 +111,8 @@ nav.top .pill { font-size: 12.5px; padding: 5px 10px; }
 #sandbox .arena-slot { aspect-ratio: 16/10; }
 .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
 .panel h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 10px; font-family: var(--sans); }
-.charts .chart { margin-bottom: 12px; } .charts .chart .ct { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--muted); margin-bottom: 2px; }
+.charts .chart { margin-bottom: 12px; } .charts .chart .ct { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 8px; font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+.charts .chart .ct .lg { white-space: nowrap; }
 .charts .chart .ct .lg { display: flex; gap: 10px; } .charts .chart .ct .lg i { display: inline-block; width: 14px; height: 0; border-top: 2px solid currentColor; vertical-align: middle; margin-right: 4px; }
 .charts .chart .ct .lg i.dash { border-top-style: dashed; }
 .slider { margin-bottom: 10px; }
@@ -194,3 +195,6 @@ body.present #present { display: grid; place-items: center; }
   #map .widgets { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+/* arena shown as hero background: no chrome */
+.arena-slot.in-hero .arena-hud, .arena-slot.in-hero .arena-legend, .arena-slot.in-hero .transport { display: none; }

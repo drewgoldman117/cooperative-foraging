@@ -8,7 +8,7 @@ function eq(tex, gloss = '') { return `<div class="eq">${katex.renderToString(te
 const k = tex => katex.renderToString(tex, { throwOnError: false });
 
 export function renderModelSection(root) {
-  const i = col(A, 'i'), j = col(B, 'j');
+  const i = '{' + col(A, 'i') + '}', j = '{' + col(B, 'j') + '}';
   root.innerHTML = `
 <h3>States</h3>
 <p>Two animals, <span class="a">A</span> and <span class="b">B</span>, forage in a forest of fruit patches. At any moment each animal <em>${k('i')}</em> is in one of five foraging states with probabilities that sum to one:

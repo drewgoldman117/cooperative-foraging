@@ -38,7 +38,7 @@ export function createForest(world, layers, reduced) {
 
   // dappled light (additive, drifts slowly, alpha follows the sun)
   const dapple = new TilingSprite({ texture: dappleTexture(512, world.seed), width: ARENA.w + 400, height: ARENA.h + 400 });
-  dapple.position.set(-200, -200); dapple.tileScale.set(0.55); dapple.blendMode = 'add'; dapple.alpha = 0.11;
+  dapple.position.set(-200, -200); dapple.tileScale.set(0.8); dapple.blendMode = 'add'; dapple.alpha = 0.2;
   ground.addChild(dapple);
 
   // ---- trees ----------------------------------------------------------------
@@ -66,7 +66,7 @@ export function createForest(world, layers, reduced) {
     trees, dapple,
     update(dt, sun) {
       time += dt;
-      dapple.alpha = 0.04 + 0.10 * sun;
+      dapple.alpha = 0.05 + 0.20 * sun;
       dapple.tilePosition.x += dt * 9; dapple.tilePosition.y += dt * 4;
       for (const t of trees) t.update(dt, time, reduced);
       if (!reduced) for (const f of fringes) f.rotation = f.baseRot + Math.sin(time * f.swayRate + f.swayPhase) * 0.02;
@@ -93,8 +93,8 @@ function makeTree(tr, rng) {
   const cols = tr.species ? PAL.ramon : PAL.ficus;
 
   const shadow = new Sprite(softBlob(128, 0.25));
-  shadow.anchor.set(0.5); shadow.tint = PAL.shadow; shadow.alpha = 0.42;
-  shadow.width = R * 2.5; shadow.height = R * 1.4; shadow.position.set(tr.x + 7, tr.y + 12);
+  shadow.anchor.set(0.5); shadow.tint = PAL.shadow; shadow.alpha = 0.55;
+  shadow.width = R * 2.7; shadow.height = R * 1.6; shadow.position.set(tr.x + 9, tr.y + 14);
 
   const trunk = new Graphics().circle(0, R * 0.55, tr.r * 0.28).fill(PAL.trunk);
   const canopy = new Graphics();

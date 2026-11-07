@@ -67,7 +67,7 @@ export function groundTexture(w, h, seed = 7) {
   const nw = Math.ceil(w / sc), nh = Math.ceil(h / sc);
   const nc = document.createElement('canvas'); nc.width = nw; nc.height = nh;
   const ng = nc.getContext('2d'); const img = ng.createImageData(nw, nh); const d = img.data;
-  const base = [0x1C, 0x2F, 0x23], light = [0x2C, 0x4B, 0x35], mid = [0x22, 0x3A, 0x2B], dirt = [0x4A, 0x3E, 0x2E];
+  const base = [0x1E, 0x33, 0x25], light = [0x36, 0x58, 0x3C], mid = [0x27, 0x42, 0x2F], dirt = [0x52, 0x44, 0x32];
   for (let y = 0; y < nh; y++) for (let x = 0; x < nw; x++) {
     const n = fbm(noise, x * 0.012, y * 0.012);                 // large patches
     const n2 = noise(x * 0.08 + 40, y * 0.08 + 9);               // litter speckle
