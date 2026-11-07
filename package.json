@@ -1,0 +1,12 @@
+{
+  "name": "cooperative-foraging",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Interactive differential-equations model of two spider monkeys foraging cooperatively (SCUDEM XI 2026, Problem B)",
+  "scripts": {
+    "test": "node --test sim/__tests__/*.test.js",
+    "check": "for f in main.js sim/*.js render/*.js ui/*.js charts/*.js; do node --check $f || exit 1; done; echo ok",
+    "serve": "python3 -m http.server 8080"
+  }
+}
