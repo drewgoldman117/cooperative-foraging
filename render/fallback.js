@@ -23,7 +23,7 @@ export function createFallbackScene(host, world) {
   const api = {
     fallback: true, cam: { mode: 'fit', zoom: 1 }, sun: 1, dayLength: 480,
     get show() { return show; },
-    rebuild() { ripples.length = 0; packets.length = 0; trails[0].length = 0; trails[1].length = 0; },
+    rebuild(w) { if (w) world = w; ripples.length = 0; packets.length = 0; trails[0].length = 0; trails[1].length = 0; },
     render(alpha, dt) {
       time += dt;
       for (let i = 0; i < 2; i++) { const mk = world.monkeys[i]; pos[i].x = mk.px + (mk.x - mk.px) * alpha; pos[i].y = mk.py + (mk.y - mk.py) * alpha; }

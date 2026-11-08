@@ -70,7 +70,7 @@ export async function createScene(host, world, { reduced = false, mobile = false
     app, layers, cam, effects: () => effects, forest: () => forest, monkeys: () => monkeys,
     dayLength: 480,          // sim minutes per light cycle
     sun: 1,
-    rebuild() { build(); },
+    rebuild(w) { if (w) world = w; build(); },
     get show() { return effects.show; },
     render(alpha, dt) {
       time += dt;
