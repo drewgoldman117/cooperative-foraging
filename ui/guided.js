@@ -29,8 +29,8 @@ export const STEPS = [
     setup: 'A monkey that hears a call walks over and joins the meal. Trees are big enough for two (c = 2.5). The mint packet is the tip; the white ring marks the real tree.',
     q: 'Does the talking pair eat more than two silent monkeys that simply spread out?', guesses: ['yes, clearly', 'about the same', 'no, less'],
     answer: p => { const g = G(p), s = Gsilent(p); return g > s * 1.03 ? 0 : g < s * 0.97 ? 2 : 1; },
-    result: (w, p) => { const g = G(p), s = Gsilent(p), same = silentSame(p), run = (w.monkeys[0].food + w.monkeys[1].food) / w.t;
-      return { verdict: `<b>About the same</b>: ${f3(g)} vs ${f3(s)} food/min. Talking beats a silent pair at the <em>same</em> spacing by ${pct(g, same)}, but spreading out works just as well.`, bars: [['talking pair', g, MINT, 'food/min'], ['silent, far apart', s, GREY, 'food/min']], detail: `This run: ${f3(run)} food/min, ${w.monkeys[0].stats.joined + w.monkeys[1].stats.joined} shared meals.` }; },
+    result: (w, p) => { const g = G(p), s = Gsilent(p), same = silentSame(p), run = (w.monkeys[0].food + w.monkeys[1].food) / w.t; const lab = g > s * 1.03 ? 'Yes' : g < s * 0.97 ? 'No, less' : 'About the same';
+      return { verdict: `<b>${lab}</b>: ${f3(g)} vs ${f3(s)} food/min (${pct(g, s)}). Against a silent pair at the <em>same</em> spacing, talking gives ${pct(g, same)}.`, bars: [['talking pair', g, MINT, 'food/min'], ['silent, far apart', s, GREY, 'food/min']], detail: `This run: ${f3(run)} food/min, ${w.monkeys[0].stats.joined + w.monkeys[1].stats.joined} shared meals.` }; },
     next: 'now make the calls vaguer →' },
   { title: 'Vague calls', params: { ...perfect, q0: 0.3 }, show: { rings: true, beliefs: true, calls: true, trails: true }, slider: 'q0',
     setup: 'Only a share q₀ of true calls say <em>where</em> the tree is. The rest send the listener to roughly the right area; it searches for 10 minutes, then gives up ("?").',
@@ -55,7 +55,7 @@ export const STEPS = [
     setup: 'Start from 200 m apart with ε = 0.6. Spacing sets how many calls get through and how far the walk is; accuracy sets whether the walk pays.',
     q: 'Which single change helps the pair more?', guesses: ['halve the distance', 'make calls accurate', 'about the same'],
     answer: p => { const a = G({ ...p, d: p.d / 2 }), b = G({ ...p, eps1: 1, eps2: 1 }); return Math.abs(a - b) < 0.01 ? 2 : a > b ? 0 : 1; },
-    result: (w, p) => { const g0 = G(p), a = G({ ...p, d: p.d / 2 }), b = G({ ...p, eps1: 1, eps2: 1 }); return { verdict: `<b>${Math.abs(a - b) < 0.01 ? 'About the same' : a > b ? 'Halving the distance' : 'Accurate calls'}</b> helps most: ${pct(a, g0)} vs ${pct(b, g0)}. Accuracy decides whether calling pays at all; distance decides how much.`, bars: [['halve distance', a, MINT, 'food/min'], ['accurate calls', b, A, 'food/min']], detail: `Baseline ${f3(g0)} food/min. The Map tab shows the whole surface.` }; },
+    result: (w, p) => { const g0 = G(p), a = G({ ...p, d: p.d / 2 }), b = G({ ...p, eps1: 1, eps2: 1 }); return { verdict: `<b>${Math.abs(a - b) < 0.01 ? 'About the same' : a > b ? 'Halving the distance wins' : 'Accurate calls win'}</b>: ${pct(a, g0)} vs ${pct(b, g0)}. Accuracy decides whether calling pays at all; distance decides how much.`, bars: [['halve distance', a, MINT, 'food/min'], ['accurate calls', b, A, 'food/min']], detail: `Baseline ${f3(g0)} food/min. The Map tab shows the whole surface.` }; },
     next: 'open the map →', nextTab: 'map' },
 ];
 

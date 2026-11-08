@@ -35,7 +35,7 @@ export function createFallbackScene(host, world) {
       const zoom = Math.min(W / (ARENA.w + 40), H / (ARENA.h + 40));
       const ox = (W - ARENA.w * zoom) / 2, oy = (H - ARENA.h * zoom) / 2;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.fillStyle = '#10201a'; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#1b3024'; ctx.fillRect(0, 0, W, H);
       ctx.save(); ctx.translate(ox, oy); ctx.scale(zoom, zoom);
       ctx.fillStyle = '#233c2c'; ctx.fillRect(0, 0, ARENA.w, ARENA.h);
       ctx.fillStyle = 'rgba(0,0,0,.25)';

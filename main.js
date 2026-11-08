@@ -32,7 +32,7 @@ refreshSteady();
 const ctl = {
   get world() { return world; }, get params() { return world.params; },
   listeners: new Set(), frameListeners: new Set(), currentPreset: startPreset.id, adaptD: false, etaDemo: 2.5e4,
-  reset(newSeed = seed) { seed = newSeed; world = createWorld({ seed, params: { ...world.params } }); hist.intake.reset(); scene && scene.rebuild(); refreshSteady(); for (const f of ctl.listeners) f('reset'); },
+  reset(newSeed = seed) { seed = newSeed; world = createWorld({ seed, params: { ...world.params } }); hist.intake.reset(); sampleT = -1; scene && scene.rebuild(); refreshSteady(); for (const f of ctl.listeners) f('reset'); },
   setParams(obj, { restart = false } = {}) { world.setParams(obj); if (restart) ctl.reset(); else refreshSteady(); sliders && sliders.sync(world.params); advSliders && advSliders.sync(world.params); for (const f of ctl.listeners) f('params'); },
   setParam(key, v, o) { ctl.setParams(expandParam(key, v), o); },
   applyPreset(id, { restart = true } = {}) { const pr = presetById[id]; if (!pr) return; ctl.setParams({ ...baseParams, ...pr.params }, { restart }); ctl.setAdapt(!!pr.adaptD); ctl.currentPreset = id; document.querySelectorAll('#presets button').forEach(b => b.classList.toggle('active', b.dataset.id === id)); },
