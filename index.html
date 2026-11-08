@@ -4,119 +4,43 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Call and Response</title>
-<meta name="description" content="Two spider monkeys, one forest, and calls that may be vague, wrong or lies. An interactive differential-equations model (SCUDEM XI 2026, Problem B).">
+<meta name="description" content="Two spider monkeys share a forest. Move four sliders and see how much they eat. SCUDEM XI 2026, Problem B.">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&family=Space+Grotesk:wght@600;700&display=swap">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css">
 <link rel="stylesheet" href="./styles.css">
 <script type="importmap">
 { "imports": {
     "pixi.js":      "https://cdn.jsdelivr.net/npm/pixi.js@8.14.0/dist/pixi.min.mjs",
     "pixi-filters": "https://cdn.jsdelivr.net/npm/pixi-filters@6.1.5/dist/pixi-filters.min.mjs",
-    "uplot":        "https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.esm.js",
     "katex":        "https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.mjs"
 } }
 </script>
 </head>
-<body data-mode="title">
+<body>
+<div id="arena"></div>
+<div class="name">Call and Response</div>
+<button class="info" id="btn-info" aria-label="The equations">i</button>
+<div class="gfx-note" id="gfx-note" hidden>simplified graphics</div>
 
-<!-- full-screen arena -->
-<div id="arena-slot">
-  <div class="run-progress" id="run-progress"><i></i></div>
-  <div id="arena"></div>
-  <div class="gfx-note" id="gfx-note" hidden>simplified graphics</div>
-</div>
-
-<!-- HUD (top-left) -->
-<div class="hud ui" id="hud">
-  <div class="chip"><span class="k">time</span><b id="hud-t">0 min</b><span class="k" id="hud-day">day 1</span></div>
-  <div class="chip"><span class="a">A</span><b id="hud-fa">0</b><span class="b">B</span><b id="hud-fb">0</b><span class="k">food</span></div>
-  <div class="chip"><span class="k">apart</span><b id="hud-sep">0 m</b></div>
-  <div class="chip transport"><button id="tr-play" title="Play / pause (Space)">❚❚</button><button id="tr-reset" title="Restart (R)">↺</button><span class="speed" id="tr-speed"></span></div>
-</div>
-
-<!-- top-right menu -->
-<div class="topright ui">
-  <button id="btn-mode" title="Switch between guided steps and the sandbox">Sandbox</button>
-  <button id="btn-chart" title="Show the intake chart">Chart</button>
-  <button id="btn-menu" title="Map, model, about">☰</button>
-  <button id="btn-mute" title="Sound (M)">🔇</button>
-  <button id="btn-help" title="Keys (?)">?</button>
-</div>
-
-<!-- chart panel (sandbox) -->
-<div class="chartpanel ui hidden" id="chartpanel">
-  <div class="ct"><span><i style="color:var(--a)"></i>A <i style="color:var(--b)"></i>B <i class="dash" style="color:#ddd"></i>model <i class="dash" style="color:#888"></i>silent far</span><button class="x" id="chart-close">×</button></div>
-  <div id="ch-intake"></div>
-</div>
-
-<!-- bottom bar: guided -->
-<div class="bottombar ui" id="bar-play">
-  <div class="dots" id="g-dots"></div>
-  <div class="q" id="g-q"></div>
-  <div class="guesses" id="g-guesses"></div>
-  <button class="primary" id="g-run" disabled>pick a guess</button>
-  <div class="stepslider" id="g-ctl"></div>
-  <button class="info" id="g-info" title="What is going on in this step?">i</button>
-</div>
-
-<!-- bottom bar: sandbox -->
-<div class="bottombar ui" id="bar-sandbox">
-  <div class="presets" id="presets"></div>
-  <div class="sliders" id="controls-main"></div>
-  <button id="btn-adv" title="More parameters">⚙</button>
-  <button class="info" id="s-info" title="What do these do?">i</button>
-</div>
-
-<!-- info card (opened by "i") -->
-<div class="card info-card ui hidden" id="infocard"><button class="x" id="info-close">×</button><div id="info-body"></div></div>
-
-<!-- advanced sliders (sandbox) -->
-<div class="card adv-card ui hidden" id="advcard"><button class="x" id="adv-close">×</button><div id="controls-adv"></div><div class="toggles" id="toggles"></div><div class="counter-strip" id="counters"></div></div>
-
-<!-- result card -->
-<div class="modal hidden" id="result">
-  <div class="card result">
-    <div class="verdict" id="g-verdict"></div>
-    <div class="bars" id="g-bars"></div>
-    <details class="detail"><summary>details</summary><p id="g-detail"></p><div class="charts"><div class="chart"><div id="g-chart"></div></div></div></details>
-    <div class="row"><button id="g-again">↺ run again</button><button class="primary" id="g-next">Continue →</button></div>
+<div class="panel">
+  <div class="sliders">
+    <label class="s"><span class="lab">Distance apart</span><span class="val" id="v-d"></span><input type="range" id="s-d" min="0" max="320" step="1" value="130"></label>
+    <label class="s"><span class="lab">Accuracy</span><span class="val" id="v-p"></span><input type="range" id="s-p" min="0" max="100" step="1" value="100"></label>
+    <label class="s"><span class="lab">Detail</span><span class="val" id="v-b"></span><input type="range" id="s-b" min="0" max="100" step="1" value="100"></label>
+    <label class="s"><span class="lab">B lies</span><span class="val" id="v-z"></span><input type="range" id="s-z" min="0" max="100" step="1" value="0"></label>
   </div>
-</div>
-
-<!-- menu modal: map / model / about -->
-<div class="modal hidden" id="menu">
-  <div class="card menu">
-    <div class="menutabs"><button data-pane="map" class="active">Map</button><button data-pane="model">Model</button><button data-pane="about">About</button><button class="x" id="menu-close">×</button></div>
-    <div class="pane" id="pane-map">
-      <div class="grid2">
-        <div><canvas class="heat" id="heat" width="640" height="520"></canvas><p class="reading" id="heat-cap">Computing…</p><div class="toggles" id="heat-layer"></div></div>
-        <div>
-          <p class="reading">Pair intake for every spacing (x) and call quality A = ε·h·q₀ (y). Click to restart the forest there.</p>
-          <details class="more"><summary>Spacing dynamics</summary><canvas id="phase-line" width="560" height="300"></canvas><p class="reading" id="pl-cap"></p></details>
-          <details class="more"><summary>Honesty × trust</summary><canvas id="phase-c" width="560" height="300"></canvas><p class="reading" id="pc-cap"></p></details>
-        </div>
-      </div>
+  <div class="result">
+    <div class="total">Total food: <b id="r-total"></b> <span class="unit">trees/day</span> <span class="delta" id="r-delta"></span></div>
+    <div class="bars">
+      <div class="row"><span class="who a">A</span><div class="track"><div class="fill a" id="b-a"></div><div class="mark" id="m-a"></div></div><span class="num" id="n-a"></span></div>
+      <div class="row"><span class="who b">B</span><div class="track"><div class="fill b" id="b-b"></div><div class="mark" id="m-b"></div></div><span class="num" id="n-b"></span></div>
     </div>
-    <div class="pane hidden" id="pane-model"><div id="model-body" class="prose"></div></div>
-    <div class="pane hidden" id="pane-about"><div id="about-body" class="prose"></div></div>
+    <div class="loners"><i></i>two loners: <span id="r-loners"></span></div>
   </div>
 </div>
 
-<!-- title screen -->
-<div id="title">
-  <div class="inner">
-    <div class="eyebrow">SCUDEM XI 2026 · B</div>
-    <h1>Call and Response</h1>
-    <p class="hook">Two monkeys. One forest. Should they trust each other's calls?</p>
-    <button class="primary big" id="btn-start">▶ Play</button>
-    <button id="btn-start-sandbox">Sandbox</button>
-  </div>
-</div>
-
-<div class="modal hidden" id="help"><div class="card"><button class="x" id="help-close">×</button><h3>Keys</h3><table id="help-table"></table></div></div>
-
+<div class="modal" id="card" hidden><div class="card"><button class="x" id="card-close" aria-label="Close">×</button><div id="card-body"></div></div></div>
 <script type="module" src="./main.js"></script>
 </body>
 </html>
