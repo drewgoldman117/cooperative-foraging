@@ -2,6 +2,7 @@
 export const SLIDERS = [
   { key: 'd',     name: 'Target separation', sym: 'd',   min: 20, max: 800, step: 5, unit: 'm',   help: 'How far apart the pair tries to stay (Layer B treats this as a slow state).' },
   { key: 'dc',    name: 'Call range',        sym: 'd_c', min: 50, max: 600, step: 10, unit: 'm',  help: 'Whinny active space: a call at distance d is heard with p = exp(−(d/d_c)²).' },
+  { key: 'A',     name: 'Call quality',      sym: 'ε',   min: 0, max: 1, step: 0.05, unit: '',    help: 'Accuracy of both animals; A = ε·h·q₀ is the chance a heard call is true and precise.' },
   { key: 'q0',    name: 'Detail',            sym: 'q_0', min: 0, max: 1, step: 0.05, unit: '',    help: 'Probability a true call carries enough detail to locate the patch.' },
   { key: 'eps',   name: 'Accuracy',          sym: 'ε',   min: 0, max: 1, step: 0.05, unit: '',    help: 'Perceptual accuracy of both animals (honest mistakes).' },
   { key: 'h2',    name: 'Honesty of B',      sym: 'h_2', min: 0, max: 1, step: 0.05, unit: '',    help: 'Probability the blue monkey tells the truth. 0 = always deceives.' },
@@ -13,8 +14,8 @@ export const SLIDERS = [
 const fmt = (v, s) => s.step >= 1 ? `${Math.round(v)} ${s.unit}`.trim() : `${v.toFixed(2)} ${s.unit}`.trim();
 
 /** Compound keys: eps → eps1+eps2, beta → beta1+beta2. */
-export function readParam(p, key) { return key === 'eps' ? p.eps1 : key === 'beta' ? p.beta1 : p[key]; }
-export function expandParam(key, v) { return key === 'eps' ? { eps1: v, eps2: v } : key === 'beta' ? { beta1: v, beta2: v } : { [key]: v }; }
+export function readParam(p, key) { return key === 'eps' || key === 'A' ? p.eps1 : key === 'beta' ? p.beta1 : p[key]; }
+export function expandParam(key, v) { return key === 'eps' || key === 'A' ? { eps1: v, eps2: v } : key === 'beta' ? { beta1: v, beta2: v } : { [key]: v }; }
 
 export function buildSliders(root, params, onChange, keys = null) {
   const list = keys ? SLIDERS.filter(s => keys.includes(s.key)) : SLIDERS;
@@ -25,7 +26,7 @@ export function buildSliders(root, params, onChange, keys = null) {
     const inp = wrap.querySelector('input'), val = wrap.querySelector('.val');
     inp.value = readParam(params, s.key); val.textContent = fmt(+inp.value, s);
     inp.addEventListener('input', () => { val.textContent = fmt(+inp.value, s); onChange(s.key, +inp.value); });
-    inp.addEventListener('dblclick', () => { inp.value = s.key === 'eps' ? 0.9 : s.key === 'beta' ? 1 : s.key === 'h2' ? 1 : ''; inp.dispatchEvent(new Event('input')); });
+    
     root.appendChild(wrap);
     inputs[s.key] = { inp, val, s };
   }

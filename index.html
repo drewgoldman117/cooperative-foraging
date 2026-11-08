@@ -3,10 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Call and Response — cooperative foraging model</title>
-<meta name="description" content="Interactive differential-equations model of two spider monkeys foraging cooperatively while sharing information of varying detail, accuracy and honesty. SCUDEM XI 2026, Problem B.">
-<meta property="og:title" content="Call and Response — a two-forager ODE model of information sharing">
-<meta property="og:description" content="Do two monkeys eat more when they talk? An interactive model with live agent-based simulation, equations and a distance × accuracy map.">
+<title>Call and Response</title>
+<meta name="description" content="Two spider monkeys, one forest, and calls that may be vague, wrong or lies. An interactive differential-equations model (SCUDEM XI 2026, Problem B).">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.min.css">
@@ -21,136 +19,103 @@
 } }
 </script>
 </head>
-<body>
-<nav class="top">
-  <a class="brand" href="#hero"><i></i>Call and Response</a>
-  <div class="links">
-    <a href="#guided">Play</a><a href="#sandbox">Sandbox</a><a href="#map">Map</a><a href="#model">Model</a><a href="#findings">Findings</a><a href="#about">About</a>
-  </div>
-  <button class="pill" id="btn-mute" title="Toggle sound (M)">🔇 Sound off</button>
-  <button class="pill" id="btn-present" title="Presentation mode (P)">▶ Present</button>
-  <button class="pill" id="btn-help" title="Keyboard help (?)">?</button>
-</nav>
+<body data-mode="title">
 
-<!-- The single PixiJS arena lives in #arena and is re-parented into whichever section is active. -->
-<template id="arena-template">
-  <div class="arena-slot">
-    <div id="arena"></div>
-    <div class="arena-hud">
-      <div class="chip"><span>t</span><b id="hud-t">0 min</b><span class="muted" id="hud-day">day 1</span></div>
-      <div class="chip"><span class="a">A</span><b id="hud-fa">0.0</b><span class="b">B</span><b id="hud-fb">0.0</b><span class="muted">food</span></div>
-      <div class="chip"><span>d</span><b id="hud-sep">0 m</b><span class="muted" id="hud-state"></span></div>
-    </div>
-    <div class="arena-legend">
-      <span><i style="background:var(--a)"></i>Monkey A</span><span><i style="background:var(--b)"></i>Monkey B</span>
-      <span><i class="ring" style="color:var(--a)"></i>contact radius d<sub>c</sub></span><span><i style="background:var(--fruit)"></i>ripe fruit</span>
-      <span><i class="cross"></i>true patch</span><span><i class="dash" style="color:var(--b)"></i>believed patch</span>
-      <span><i style="background:#8FFFD8"></i>accurate tip</span><span><i style="background:var(--lie)"></i>deceptive tip</span>
-    </div>
-    <div class="transport">
-      <button id="tr-play" title="Play / pause (Space)">❚❚</button>
-      <button id="tr-reset" title="Restart (R)">↺</button>
-      <div class="speed" id="tr-speed"></div>
-      <span class="t" id="tr-t"></span>
-    </div>
-  </div>
-</template>
+<!-- full-screen arena -->
+<div id="arena-slot">
+  <div class="run-progress" id="run-progress"><i></i></div>
+  <div id="arena"></div>
+  <div class="gfx-note" id="gfx-note" hidden>simplified graphics</div>
+</div>
 
-<section id="hero">
-  <div class="bg" id="hero-arena"></div>
-  <div class="veil"></div>
-  <div class="content">
-    <div class="eyebrow">SCUDEM XI 2026 · Problem B · Group dynamics in foraging</div>
-    <h1>Call and Response</h1>
-    <p class="sub">A differential-equations model of two animals foraging together while sharing information that may be vague, wrong, or deliberately false.</p>
-    <p class="hook" id="hero-hook">Do two spider monkeys eat more when they talk? About 10 % more than a silent pair at the same spacing, but no more than two foragers that simply spread out.</p>
-    <div class="cta">
-      <a class="btn primary" href="#guided" id="btn-play">▶ Play the model (5 min)</a>
-      <a class="btn" href="#sandbox">Skip to sandbox</a>
-      <a class="btn" href="#model">Read the model</a>
-    </div>
-    <div class="stats"><span>trees found <b id="hs-found">0</b></span><span>calls <b id="hs-calls">0</b></span><span>tips followed <b id="hs-tips">0</b></span><span>misled <b id="hs-misled">0</b></span><span>separation <b id="hs-sep">0 m</b></span></div>
-  </div>
-</section>
+<!-- HUD (top-left) -->
+<div class="hud ui" id="hud">
+  <div class="chip"><span class="k">time</span><b id="hud-t">0 min</b><span class="k" id="hud-day">day 1</span></div>
+  <div class="chip"><span class="a">A</span><b id="hud-fa">0</b><span class="b">B</span><b id="hud-fb">0</b><span class="k">food</span></div>
+  <div class="chip"><span class="k">apart</span><b id="hud-sep">0 m</b></div>
+  <div class="chip transport"><button id="tr-play" title="Play / pause (Space)">❚❚</button><button id="tr-reset" title="Restart (R)">↺</button><span class="speed" id="tr-speed"></span></div>
+</div>
 
-<section id="guided" class="section">
-  <header><div class="num">01 · Guided mode</div><h2>Seven steps, one mechanism each</h2><p class="lead">Predict, run, score. Each step adds one rule of the model to the forest. Keys <kbd>1</kbd>–<kbd>7</kbd> jump between steps.</p></header>
-  <div class="frame">
-    <div class="bar"><div class="dots" id="g-dots"></div><span class="n" id="g-n">1 / 7</span><span class="title" id="g-title"></span><span style="margin-left:auto" class="n" id="g-status"></span></div>
-    <div class="progress"><i id="g-progress"></i></div>
-    <div class="body">
-      <div class="arena-slot" id="guided-arena"></div>
-      <div class="side">
-        <div class="rule" id="g-rule"></div>
-        <div id="g-text"></div>
-        <div class="q" id="g-q"></div>
-        <div class="guesses" id="g-guesses"></div>
-        <button class="primary" id="g-run">▶ Run 240 min</button>
-        <div class="score" id="g-score">Make a guess, then run.</div>
-        <div class="next"><button id="g-prev">← back</button><button id="g-next">…next →</button></div>
+<!-- top-right menu -->
+<div class="topright ui">
+  <button id="btn-mode" title="Switch between guided steps and the sandbox">Sandbox</button>
+  <button id="btn-chart" title="Show the intake chart">Chart</button>
+  <button id="btn-menu" title="Map, model, about">☰</button>
+  <button id="btn-mute" title="Sound (M)">🔇</button>
+  <button id="btn-help" title="Keys (?)">?</button>
+</div>
+
+<!-- chart panel (sandbox) -->
+<div class="chartpanel ui hidden" id="chartpanel">
+  <div class="ct"><span><i style="color:var(--a)"></i>A <i style="color:var(--b)"></i>B <i class="dash" style="color:#ddd"></i>model <i class="dash" style="color:#888"></i>silent far</span><button class="x" id="chart-close">×</button></div>
+  <div id="ch-intake"></div>
+</div>
+
+<!-- bottom bar: guided -->
+<div class="bottombar ui" id="bar-play">
+  <div class="dots" id="g-dots"></div>
+  <div class="q" id="g-q"></div>
+  <div class="guesses" id="g-guesses"></div>
+  <button class="primary" id="g-run" disabled>pick a guess</button>
+  <div class="stepslider" id="g-ctl"></div>
+  <button class="info" id="g-info" title="What is going on in this step?">i</button>
+</div>
+
+<!-- bottom bar: sandbox -->
+<div class="bottombar ui" id="bar-sandbox">
+  <div class="presets" id="presets"></div>
+  <div class="sliders" id="controls-main"></div>
+  <button id="btn-adv" title="More parameters">⚙</button>
+  <button class="info" id="s-info" title="What do these do?">i</button>
+</div>
+
+<!-- info card (opened by "i") -->
+<div class="card info-card ui hidden" id="infocard"><button class="x" id="info-close">×</button><div id="info-body"></div></div>
+
+<!-- advanced sliders (sandbox) -->
+<div class="card adv-card ui hidden" id="advcard"><button class="x" id="adv-close">×</button><div id="controls-adv"></div><div class="toggles" id="toggles"></div><div class="counter-strip" id="counters"></div></div>
+
+<!-- result card -->
+<div class="modal hidden" id="result">
+  <div class="card result">
+    <div class="verdict" id="g-verdict"></div>
+    <div class="bars" id="g-bars"></div>
+    <details class="detail"><summary>details</summary><p id="g-detail"></p><div class="charts"><div class="chart"><div id="g-chart"></div></div></div></details>
+    <div class="row"><button id="g-again">↺ run again</button><button class="primary" id="g-next">Continue →</button></div>
+  </div>
+</div>
+
+<!-- menu modal: map / model / about -->
+<div class="modal hidden" id="menu">
+  <div class="card menu">
+    <div class="menutabs"><button data-pane="map" class="active">Map</button><button data-pane="model">Model</button><button data-pane="about">About</button><button class="x" id="menu-close">×</button></div>
+    <div class="pane" id="pane-map">
+      <div class="grid2">
+        <div><canvas class="heat" id="heat" width="640" height="520"></canvas><p class="reading" id="heat-cap">Computing…</p><div class="toggles" id="heat-layer"></div></div>
+        <div>
+          <p class="reading">Pair intake for every spacing (x) and call quality A = ε·h·q₀ (y). Click to restart the forest there.</p>
+          <details class="more"><summary>Spacing dynamics</summary><canvas id="phase-line" width="560" height="300"></canvas><p class="reading" id="pl-cap"></p></details>
+          <details class="more"><summary>Honesty × trust</summary><canvas id="phase-c" width="560" height="300"></canvas><p class="reading" id="pc-cap"></p></details>
+        </div>
       </div>
     </div>
-    <div class="foot">
-      <div class="charts"><div class="chart"><div class="ct" id="g-chart-title"><span>Intake per animal (food/min), running average</span><span class="lg"><i style="color:var(--a)"></i>A <i style="color:var(--b)"></i>B <i class="dash" style="color:#aaa"></i>ODE <i class="dash" style="color:#777"></i>solo (far)</span></div><div id="g-chart"></div></div></div>
-      <div class="ctl" id="g-ctl"></div>
-    </div>
+    <div class="pane hidden" id="pane-model"><div id="model-body" class="prose"></div></div>
+    <div class="pane hidden" id="pane-about"><div id="about-body" class="prose"></div></div>
   </div>
-</section>
+</div>
 
-<section id="sandbox" class="section">
-  <header><div class="num">02 · Sandbox</div><h2>Every knob of the model, live</h2><p class="lead">Sliders change the model immediately; the dashed line on the intake chart is the Layer A ODE prediction, the solid lines are the running average of the agent-based forest you are watching.</p></header>
-  <div class="presets" id="presets"><span class="blurb" id="preset-blurb"></span></div>
-  <div class="grid">
-    <div>
-      <div class="arena-slot" id="sandbox-arena"></div>
-      <div class="counter-strip" id="counters"></div>
-    </div>
-    <div class="panel charts">
-      <div class="chart"><div class="ct"><span>Intake (food/min), running avg</span><span class="lg"><i style="color:var(--a)"></i>A <i style="color:var(--b)"></i>B <i class="dash" style="color:#ccc"></i>ODE <i class="dash" style="color:#777"></i>solo (far)</span></div><div id="ch-intake"></div></div>
-      <div class="chart"><div class="ct"><span>Separation d (m)</span><span class="lg"><i style="color:#E8F3EC"></i>d <i class="dash" style="color:var(--accent)"></i>d<sub>c</sub> <i class="dash" style="color:#888"></i>target</span></div><div id="ch-sep"></div></div>
-      <div class="chart"><div class="ct"><span>Animal A: time in state (ABM solid, ODE dashed)</span><span class="lg"><i style="color:#9BB3A4"></i>S <i style="color:var(--fruit)"></i>O <i style="color:#8FFFD8"></i>J <i style="color:var(--lie)"></i>M</span></div><div id="ch-occ"></div></div>
-    </div>
-    <div class="panel controls" id="controls"><h3>Parameters</h3></div>
+<!-- title screen -->
+<div id="title">
+  <div class="inner">
+    <div class="eyebrow">SCUDEM XI 2026 · B</div>
+    <h1>Call and Response</h1>
+    <p class="hook">Two monkeys. One forest. Should they trust each other's calls?</p>
+    <button class="primary big" id="btn-start">▶ Play</button>
+    <button id="btn-start-sandbox">Sandbox</button>
   </div>
-</section>
+</div>
 
-<section id="map" class="section">
-  <header><div class="num">03 · The map</div><h2>Distance or accuracy?</h2><p class="lead">Steady-state pair intake G* of the Layer A ODE, computed in your browser on a 25 × 25 grid. Click anywhere to move the crosshair: the sliders follow and the forest restarts at that point.</p></header>
-  <div class="grid">
-    <div>
-      <canvas class="heat" id="heat" width="640" height="520"></canvas>
-      <div class="cap" id="heat-cap">Colour: pair intake G* (food/min). x: separation d (m). y: accuracy a = ε·h applied to both animals. Computing…</div>
-      <div class="toggles" id="heat-layer"></div>
-    </div>
-    <div>
-      <div class="arena-slot" id="map-arena"></div>
-      <div class="status" id="map-status"></div>
-    </div>
-  </div>
-  <div class="widgets">
-    <div class="panel"><h3>Layer B — spacing phase line</h3><canvas id="phase-line" width="560" height="300"></canvas><div class="cap" id="pl-cap"></div></div>
-    <div class="panel"><h3>Layer C — honesty × trust phase portrait</h3><canvas id="phase-c" width="560" height="300"></canvas><div class="cap" id="pc-cap"></div></div>
-  </div>
-</section>
-
-<section id="model" class="section">
-  <header><div class="num">04 · The model</div><h2>Coverage, contact, trust</h2><p class="lead">Three layers on three time scales: fast foraging states (minutes), slow spacing (hours), and slower honesty and trust (days).</p></header>
-  <div id="model-body" class="prose"></div>
-</section>
-
-<section id="findings" class="section">
-  <header><div class="num">05 · Findings</div><h2>Answers to the three questions</h2><p class="lead">Numbers below are filled from <code>findings.md</code> once the Python sweeps are final.</p></header>
-  <div class="cards" id="findings-cards"></div>
-</section>
-
-<section id="about" class="section">
-  <header><div class="num">06 · About</div><h2>Credits, code, citation</h2></header>
-  <div id="about-body" class="prose"></div>
-</section>
-<footer>Built for SCUDEM XI 2026 · Problem B · <span id="foot-year"></span></footer>
-
-<div id="present"><div class="stage" id="present-stage"><div class="arena-slot" id="present-arena"></div><div class="title">Call and Response<small>two foragers · one ODE model · SCUDEM XI 2026 B</small></div><div class="scene-name" id="present-scene"></div><div class="pchart"><div class="ct"><span>Intake (food/min)</span><span>ABM solid · ODE dashed</span></div><div id="present-chart"></div></div></div></div>
-<div id="help"><div class="box"><h3>Keyboard</h3><table id="help-table"></table><p class="muted" style="margin-top:10px">Press <kbd>?</kbd> or <kbd>Esc</kbd> to close.</p></div></div>
+<div class="modal hidden" id="help"><div class="card"><button class="x" id="help-close">×</button><h3>Keys</h3><table id="help-table"></table></div></div>
 
 <script type="module" src="./main.js"></script>
 </body>

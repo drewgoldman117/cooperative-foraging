@@ -9,7 +9,8 @@ const k = tex => katex.renderToString(tex, { throwOnError: false });
 
 export function renderModelSection(root) {
   const i = '{' + col(A, 'i') + '}', j = '{' + col(B, 'j') + '}';
-  root.innerHTML = `
+  const sec = (title, body, open = false) => `<details class="sec"${open ? ' open' : ''}><summary>${title}</summary><div class="inner">${body}</div></details>`;
+  const body = `
 <h3>States</h3>
 <p>Two animals, <span class="a">A</span> and <span class="b">B</span>, forage in a forest of fruit patches. At any moment each animal <em>${k('i')}</em> is in one of five foraging states with probabilities that sum to one:
 ${k('S_i')} searching · ${k('O_i')} feeding at a patch it found · ${k('W_i')} walking toward the partner's patch · ${k('J_i')} feeding at the partner's patch (joined) · ${k('M_i')} misled (walking to a false location, then searching locally). Their separation ${k('d')} and the behavioural traits honesty ${k('h_i')} and trust ${k('\\beta_i')} change on slower time scales.</p>
@@ -37,8 +38,7 @@ ${eq(`\\pi_${i} = G_${i} + \\kappa_{rel}\\,G_${j},\\qquad \\dot h_${i} = r_h\\, 
 <h3>Nondimensionalisation</h3>
 ${eq(`\\tau = \\mu t,\\quad \\delta = d/d_c,\\quad \\Lambda = \\lambda_0/\\mu,\\quad \\Sigma = \\sigma/\\mu,\\quad \\tilde V = \\frac{v}{\\mu d_c},\\quad L = \\ell_s/d_c,\\quad \\Gamma = \\mu\\tau_g`, 'Baseline: Λ = 0.5 (search efficiency), Σ = 3 (call intensity), Ṽ = 1.5 (call-radii walkable per patch lifetime), L = 0.5, Γ = 0.67; intake in units of g.')}
 
-<h3>Parameters</h3>
-<table class="params"><thead><tr><th>Symbol</th><th>Meaning</th><th>Baseline</th><th>Units</th><th>Source / type</th></tr></thead><tbody>
+</section-split>Parameters</section-split><table class="params"><thead><tr><th>Symbol</th><th>Meaning</th><th>Baseline</th><th>Units</th><th>Source / type</th></tr></thead><tbody>
 <tr><td class="sym">μ</td><td>patch residence (feed) rate</td><td class="num">1/15</td><td>1/min</td><td>~10 trees/day (Suarez 2006), derived</td></tr>
 <tr><td class="sym">λ<sub>0</sub></td><td>solo discovery rate while searching</td><td class="num">1/30</td><td>1/min</td><td>10 trees per 8 h day, half the time searching</td></tr>
 <tr><td class="sym">ℓ<sub>s</sub></td><td>coverage-redundancy scale</td><td class="num">150</td><td>m</td><td>core range ~8 ha (assumed)</td></tr>
@@ -56,7 +56,7 @@ ${eq(`\\tau = \\mu t,\\quad \\delta = d/d_c,\\quad \\Lambda = \\lambda_0/\\mu,\\
 <tr><td class="sym">η, r<sub>h</sub>, r<sub>β</sub></td><td>adaptation rates of the slow layers</td><td class="num">1</td><td>–</td><td>time-scale only</td></tr>
 </tbody></table>
 
-<div class="cols2"><div>
+</section-split>Assumptions and limitations</section-split><div class="cols2"><div>
 <h3>Assumptions</h3>
 <ol class="assume">
 <li><b>A1</b> Two animals forage in a forest of fruit patches; a found patch feeds for a mean time 1/μ, then is exhausted.</li>
@@ -79,9 +79,24 @@ ${eq(`\\tau = \\mu t,\\quad \\delta = d/d_c,\\quad \\Lambda = \\lambda_0/\\mu,\\
 <li>Deception is a fixed policy per call, not conditioned on patch size or on the partner's behaviour; Layer C adapts slowly rather than learning within a day.</li>
 <li>Calls are instantaneous and binary (heard / not heard); real whinnies carry graded information and can be repeated.</li>
 </ul></div></div>`;
+  const parts = body.split(/<\/section-split>(.*?)<\/section-split>/);
+  let html = sec('Equations', parts[0], true);
+  for (let k = 1; k < parts.length; k += 2) html += sec(parts[k], parts[k + 1]);
+  html += sec('Findings', findingsHTML());
+  root.innerHTML = html;
 }
 
-export function renderFindings(root) {
+function findingsHTML() {
+  const items = [
+    ['H1 · Communication level and detail', 'How much do calling (σ) and detail (q<sub>0</sub>) raise pair intake, and where do the returns saturate? At baseline calling is −0.5 % against two dispersed solo foragers but +10 % against a silent pair at the same spacing.'],
+    ['H2 · Accuracy and deception', 'A tip is worth following only above a<sub>crit</sub> = 0.56 at d*; a contact equilibrium exists only for A = ε·h·q<sub>0</sub> ≥ 0.57. Who gains and who loses when one animal lies, as a function of c and d?'],
+    ['H3 · Distance versus accuracy', 'Where is the ridge d*(ε) on the map, and which parameter moves intake more (local elasticities, global sensitivity)?'],
+  ];
+  return items.map(([t, q], k) => `<h3>${t}</h3><p class="muted">${q}</p><div class="placeholder" data-finding="${k + 1}">[to be filled from findings.md]</div>`).join('') + `<h3>What to consider in cooperative foraging</h3><div class="placeholder" data-finding="summary">[to be filled from findings.md — five bullets for a field biologist]</div>`;
+}
+
+export function renderFindings(root) {   // kept for compatibility; findings now live inside the Model modal
+  root.innerHTML = findingsHTML(); return; // eslint-disable-line no-unreachable
   const items = [
     ['Q1 · Communication level and detail', 'How much do calling (σ) and detail (q<sub>0</sub>) raise pair intake over the silent baseline, and where do the returns saturate?'],
     ['Q2 · Accuracy and deception', 'Below which accuracy a<sub>crit</sub>(d) is listening worse than ignoring? Who gains and who loses when one animal lies, as a function of c and d?'],
