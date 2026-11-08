@@ -1,11 +1,10 @@
-# DEV — Call and Response (SCUDEM XI 2026 B demo)
+# DEV — Call and Response (model v3 demo)
 
-- Run: `cd 07_web_demo && python3 -m http.server 8080` → http://localhost:8080/ (ES modules need http, not file://). No build step; libs pinned on jsDelivr via the import map in index.html.
-- Test: `npm test` (node --test on sim/: conservation, σ=0 limit, symmetry, ABM vs ODE). Syntax: `npm run check`.
-- Structure: `sim/` pure model (model.js Layer A/B/C, abm.js 2-D agents, loop.js, presets.js) · `render/` PixiJS scene (forest, monkey, effects, postfx) · `charts/` uPlot + heatmap worker + phase widgets · `ui/` HUD, guided, equations, present, audio · `main.js` wires all.
-- Controls: Space play/pause, R restart, Shift+R new forest, [ ] speed, P/F presentation mode (1920×1080, keys 1–8 = presets), C camera, H hide overlays, ? help.
-- URL: `?preset=perfect|silent|vague|noisy|liar|far|small|kin&seed=7&speed=4&present=1&only=sandbox`.
-- Findings text: edit the `data-finding` placeholders in `ui/equations.js` → `renderFindings()`; hero hook in index.html `#hero-hook`. Model numbers on the page are computed live from `sim/model.js`.
-- Recording: open `?present=1&preset=perfect&seed=7`, OBS window capture 1920×1080 @ 60 fps, CRF 18–20; cursor is hidden and the run is deterministic.
-- Screenshots: headless Chrome with `--use-angle=swiftshader --enable-unsafe-swiftshader --virtual-time-budget=14000 --window-size=1920,1080 --screenshot=… "http://localhost:8080/?only=guided"` (module workers do not finish under virtual time, so the map renders only in a real browser).
-- Deploy: push `main`; GitHub Pages serves the repo root (`.nojekyll` present, all paths relative).
+- Run: `cd 07_web_demo && python3 -m http.server 8080` → http://localhost:8080/ (modules need http). No build step; PixiJS, pixi-filters and KaTeX pinned on jsDelivr via the import map.
+- Model: `sim/v3.js` implements `05_our_model/simple/MODEL_V3.md` exactly (closed form, E_i(T) = F0(1 − e^{−h_i T}) − c_i T). The page recomputes on every slider `input` event.
+- Tests: `npm test` (v3 formulas plus the older v1/v2 suites, which are kept in `sim/` but no longer shown).
+- Page: `index.html` + `main.js` + `styles.css`; backdrop `render/v3scene.js` (PixiJS forest + monkeys, Canvas2D fallback when there is no GPU; `?gpu=none` forces it). The animation is illustrative only.
+- URL presets: `?d=130&p=100&b=100&z=100` set the sliders (p, b, z in %).
+- Old guided/sandbox/map code (ui/guided.js, charts/, sim/abm.js etc.) is no longer loaded except sim/abm.js for the seeded forest layout.
+- Screenshots: `docs/screenshots/v3_*.png`.
+- Deploy: push `main`; GitHub Pages serves the repo root.

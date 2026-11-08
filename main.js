@@ -31,7 +31,7 @@ function update() {
     $('n-' + k).textContent = r.E[i].toFixed(2);
     $('m-' + k).style.left = `${100 * (LONERS / 2) / SCALE}%`;
   }
-  $('r-loners').textContent = LONERS.toFixed(1);
+  $('r-loners').textContent = `${LONERS.toFixed(1)} (${(LONERS / 2).toFixed(2)} each)`;
   Object.assign(scene.ill.st, { d: s.d, p: s.p, z: s.z });
   window.__v3 = { s, r };
 }
@@ -54,7 +54,7 @@ ${K('E_i(T) = F_0\\,(1-e^{-h_i T}) - c_i T,\\qquad q_A = p,\; q_B = p(1-z)')}
 <li><b>L(1−q_j) b x</b> trips wasted on wrong or deceptive tips; <b>C b² x</b> effort of detailed calls.</li>
 <li><b>p</b> Accuracy, <b>b</b> Detail, <b>z</b> chance B lies (A is always honest).</li>
 </ul>
-<p class="k">F₀ = 10 trees, r₀ = a = 0.35/day, g = 2.4/day, κ = 0.5, L = 1.5, C = 0.5, T = 1 day. Two loners: 2F₀(1−e^{−0.7}) = ${LONERS.toFixed(2)} trees/day.</p>`;
+<p class="k">F₀ = 10 trees, r₀ = a = 0.35/day, g = 2.4/day, κ = 0.5, L = 1.5, C = 0.5, T = 1 day. Two loners: 2F₀(1 − e<sup>−0.7</sup>) = ${LONERS.toFixed(2)} trees/day.</p>`;
 $('btn-info').onclick = () => { $('card').hidden = false; };
 $('card-close').onclick = () => { $('card').hidden = true; };
 $('card').addEventListener('click', e => { if (e.target.id === 'card') $('card').hidden = true; });
