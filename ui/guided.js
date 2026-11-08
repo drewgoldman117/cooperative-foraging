@@ -1,6 +1,6 @@
 // ui/guided.js — seven guided steps: one mechanism each, predict → run → score. Correct answers are
 // computed from the model (ODE steady states + the run itself), never hard-coded.
-import { baseParams, steadyState, rates, Gsilent } from '../sim/model.js';
+import { baseParams, steadyState, rates, Gsilent, aCrit } from '../sim/model.js';
 import { buildSliders } from './hud.js';
 
 const RUN_T = 240;   // sim minutes per run
@@ -18,7 +18,7 @@ export const STEPS = [
     text: 'The rings are the contact radius d<sub>c</sub>. Ripples fade exactly like p(d). Drag the separation slider and watch how many ripples reach the partner.',
     q: 'At d = d<sub>c</sub> (300 m), what fraction of calls are heard?', guesses: ['about 100 %', 'about 37 %', 'about 5 %'],
     answer: () => 1, score: (w, p) => { const m = w.monkeys, calls = m[0].stats.calls + m[1].stats.calls, heard = m[0].stats.heard + m[1].stats.heard; return `p(d_c) = e⁻¹ = 0.37. This run at d = ${p.d} m: ${heard} of ${calls} calls heard (${calls ? (100 * heard / calls).toFixed(0) : '–'} %); model p(${p.d}) = ${(100 * Math.exp(-((p.d / p.dc) ** 2))).toFixed(0)} %.`; }, next: '…now let a call mean something →' },
-  { title: 'Talking', params: { ...perfect, d: 70 }, show: { rings: true, beliefs: true, calls: true, trails: true }, slider: 'sigma',
+  { title: 'Talking', params: { ...perfect, d: 189 }, show: { rings: true, beliefs: true, calls: true, trails: true }, slider: 'sigma',
     rule: 'A searching listener that hears a call acts on it (β = 1): it walks to the patch at speed v and joins the finder. Patches feed both animals (c = 2.5).',
     text: 'The mint packet carries a tip from caller to listener; the solid white ring marks the true patch. The chart compares the running intake with the dashed ODE prediction and the dotted solo baseline.',
     q: 'Over 240 min, will the talking pair eat more than the best silent alternative (two solo foragers far apart)?', guesses: ['yes', 'no', 'about the same'],
@@ -32,15 +32,15 @@ export const STEPS = [
     rule: 'Each animal perceives correctly with probability ε. A wrong-but-detailed call sends the partner to the wrong place: the amber jittery packet.',
     text: 'Wrong information is costly because the partner commits travel to it. Drag accuracy down and watch the dashed ODE line sink below the dotted solo baseline.',
     q: 'At ε = 0.5 (right half the time), does talking still beat silence?', guesses: ['yes', 'no', 'about the same'],
-    answer: p => G(p) > solo(p) * 1.03 ? 0 : G(p) < solo(p) * 0.97 ? 1 : 2, score: (w, p) => `ODE at ε = ${p.eps1}: G* = ${G(p).toFixed(3)} vs silent ${solo(p).toFixed(3)}. Listening pays only above ε ≈ ${breakEven(p, 'eps').toFixed(2)} at d = ${p.d} m.`, next: '…now let one of them lie →' },
-  { title: 'Lying', params: { ...perfect, h2: 0, c: 1.5, d: 70 }, show: { rings: true, beliefs: true, calls: true, trails: true }, slider: 'h2',
+    answer: p => G(p) > solo(p) * 1.03 ? 0 : G(p) < solo(p) * 0.97 ? 1 : 2, score: (w, p) => `Pair chain at ε = ${p.eps1}: G* = ${G(p).toFixed(3)} vs silent at the same spacing ${solo(p).toFixed(3)}. A tip is worth following only above the critical accuracy a_crit = ${aCrit(p, p.d).toFixed(2)} at d = ${p.d} m (exact, independent of σ); talking beats silence above ε ≈ ${breakEven(p, 'eps').toFixed(2)}.`, next: '…now let one of them lie →' },
+  { title: 'Lying', params: { ...perfect, h2: 0, c: 1.5, d: 189 }, show: { rings: true, beliefs: true, calls: true, trails: true }, slider: 'h2',
     rule: 'The blue monkey is dishonest (h₂ = 0): its calls point away from the patch, so it keeps the tree to itself. Patches are small (c = 1.5), so a joined partner costs the finder (1 − c/2)·g.',
     text: 'Magenta glitching packets are lies. The <span class="a">orange</span> monkey keeps trusting (β₁ = 1) and gets sent on wild-goose chases.',
     q: 'Who gains from lying?', guesses: ['the liar', 'the honest partner', 'both', 'nobody'],
     answer: p => { const s = steadyState({ ...baseParams, ...p }), ref = steadyState({ ...baseParams, ...p, h2: 1 }); const l = s.e[1] > ref.e[1] + 0.005, h = s.e[0] > ref.e[0] + 0.005; return l && h ? 2 : l ? 0 : h ? 1 : 3; },
     score: (w, p) => { const s = steadyState({ ...baseParams, ...p }), ref = steadyState({ ...baseParams, ...p, h2: 1 }); return `ODE: liar ${s.e[1].toFixed(3)} (honest: ${ref.e[1].toFixed(3)}), partner ${s.e[0].toFixed(3)} (honest: ${ref.e[0].toFixed(3)}), pair ${s.G.toFixed(3)} vs ${ref.G.toFixed(3)}. This run: A ${w.monkeys[0].food.toFixed(0)}, B ${w.monkeys[1].food.toFixed(0)} food; A misled ${w.monkeys[0].stats.misled}×.`; }, next: '…now see the whole map →' },
   { title: 'The trade-off', params: { ...perfect, eps1: 0.6, eps2: 0.6, d: 200 }, show: { rings: true, beliefs: true, calls: true, trails: true }, slider: null,
-    rule: 'Distance sets how often calls are heard and how far the partner must walk; accuracy sets whether the walk was worth it. The map plots steady-state pair intake over both.',
+    rule: 'Distance sets how often calls are heard and how far the partner must walk; accuracy sets whether the walk was worth it. A contact equilibrium exists only when A = ε·h·q₀ ≥ 0.57; below that the pair should simply disperse.',
     text: 'Starting from d = 200 m, ε = 0.6: which single change helps more?',
     q: 'Which helps pair intake more?', guesses: ['halving the distance (100 m)', 'raising accuracy to 1.0', 'about the same'],
     answer: p => { const a = G({ ...p, d: p.d / 2 }), b = G({ ...p, eps1: 1, eps2: 1 }); return Math.abs(a - b) < 0.01 ? 2 : a > b ? 0 : 1; },

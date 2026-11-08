@@ -18,7 +18,8 @@ export const baseParams = Object.freeze({
   tauG: 10,         // give-up time after a false lead, min
   dmin: 10,         // min separation in travel-time formula, m
   c: 2.5,           // patch capacity (animal-equivalents) — AM1
-  k: 0,             // shared-fate / relatedness weight in the Layer C payoff π_i = G_i + k G_j — AM3
+  kappaRel: 0,      // shared-fate / relatedness weight in the Layer C payoff π_i = G_i + κ_rel G_j — AM3
+  closure: 'joint', // 'joint': exact 13-state pair chain (model v2, §10); 'meanfield': per-animal ODE (v1, §2)
   q0: 0.8,          // detail / locatability
   eps1: 0.9, eps2: 0.9,   // perceptual accuracy
   h1: 1, h2: 1,           // honesty
@@ -105,7 +106,7 @@ const _ss = new Float64Array(NV), _ss2 = new Float64Array(NV), _e = new Float64A
  * Steady state of Layer A: integrate from all-searching for up to `T` minutes (≈ 40 patch times)
  * with a convergence stop. Returns { y, e:[e1,e2], G } where G = e1 + e2 is pair intake.
  */
-export function steadyState(p, { T = 900, dt = 0.25, tol = 1e-10 } = {}) {
+export function steadyStateMeanField(p, { T = 900, dt = 0.25, tol = 1e-10 } = {}) {
   let y = _ss, yn = _ss2;
   y.set(initialState());
   const n = Math.ceil(T / dt);
@@ -118,6 +119,89 @@ export function steadyState(p, { T = 900, dt = 0.25, tol = 1e-10 } = {}) {
   }
   const e = intake(y, p, _e);
   return { y: Float64Array.from(y), e: [e[0], e[1]], G: e[0] + e[1] };
+}
+
+// ============================================================================================
+// Model v2 — exact joint pair chain (MODEL_SPEC §10). 13 reachable pair states; W/J exist only
+// while the partner is in O. dP/dt = P Q(d); stationary law π Q = 0, Σπ = 1.
+export const JOINT_STATES = ['SS', 'SO', 'OS', 'OO', 'SM', 'MS', 'MM', 'OM', 'MO', 'WO', 'OW', 'JO', 'OJ'];
+export const NJ = 13;
+const JIDX = Object.fromEntries(JOINT_STATES.map((s, k) => [s, k]));
+const SIDX = { S: 0, O: 1, W: 2, J: 3, M: 4 };
+
+/** Generator matrix Q (row-major Float64Array(169)); rows sum to zero. */
+export function qMatrix(p, Q = new Float64Array(NJ * NJ)) {
+  Q.fill(0);
+  const r = rates(p), L = r.lambda, T = r.T, om = r.omega, nu = r.nu, mu = p.mu, q = p.q0;
+  const add = (src, dst, rate) => { if (rate > 0) Q[JIDX[src] * NJ + JIDX[dst]] += rate; };
+  for (const s1 of 'SOM') for (const s2 of 'SOM') {
+    const st = s1 + s2;
+    if (s1 === 'S') add(st, 'O' + s2, L); if (s1 === 'O') add(st, 'S' + s2, mu); if (s1 === 'M') add(st, 'S' + s2, nu);
+    if (s2 === 'S') add(st, s1 + 'O', L); if (s2 === 'O') add(st, s1 + 'S', mu); if (s2 === 'M') add(st, s1 + 'S', nu);
+  }
+  add('SO', 'WO', p.beta1 * T * r.a2 * q); add('SO', 'MO', p.beta1 * T * (1 - r.a2 * q));
+  add('OS', 'OW', p.beta2 * T * r.a1 * q); add('OS', 'OM', p.beta2 * T * (1 - r.a1 * q));
+  add('WO', 'JO', om); add('WO', 'SS', mu); add('OW', 'OJ', om); add('OW', 'SS', mu);
+  add('JO', 'SS', mu); add('OJ', 'SS', mu);
+  for (let i = 0; i < NJ; i++) { let rs = 0; for (let j = 0; j < NJ; j++) if (j !== i) rs += Q[i * NJ + j]; Q[i * NJ + i] = -rs; }
+  return Q;
+}
+
+/** Stationary distribution π: solve Qᵀπ = 0 with the last equation replaced by Σπ = 1 (Gaussian elimination). */
+export function steadyStateJoint(p) {
+  const Q = qMatrix(p), n = NJ;
+  const A = new Float64Array(n * n), b = new Float64Array(n);
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) A[i * n + j] = Q[j * n + i];   // transpose
+  for (let j = 0; j < n; j++) A[(n - 1) * n + j] = 1; b[n - 1] = 1;
+  for (let c = 0; c < n; c++) {   // partial pivoting
+    let piv = c; for (let r2 = c + 1; r2 < n; r2++) if (Math.abs(A[r2 * n + c]) > Math.abs(A[piv * n + c])) piv = r2;
+    if (piv !== c) { for (let j = 0; j < n; j++) { const t = A[c * n + j]; A[c * n + j] = A[piv * n + j]; A[piv * n + j] = t; } const t = b[c]; b[c] = b[piv]; b[piv] = t; }
+    const d = A[c * n + c]; if (Math.abs(d) < 1e-14) continue;
+    for (let r2 = c + 1; r2 < n; r2++) { const f = A[r2 * n + c] / d; if (!f) continue; for (let j = c; j < n; j++) A[r2 * n + j] -= f * A[c * n + j]; b[r2] -= f * b[c]; }
+  }
+  const pi = new Float64Array(n);
+  for (let i = n - 1; i >= 0; i--) { let sum = b[i]; for (let j = i + 1; j < n; j++) sum -= A[i * n + j] * pi[j]; pi[i] = A[i * n + i] ? sum / A[i * n + i] : 0; }
+  for (let i = 0; i < n; i++) if (pi[i] < 0) pi[i] = 0;
+  return pi;
+}
+
+/** Marginal occupancies [S1,O1,W1,J1,M1, S2,O2,W2,J2,M2] of a joint law. */
+export function marginals(pi, out = new Float64Array(NV)) {
+  out.fill(0);
+  for (let k = 0; k < NJ; k++) { const st = JOINT_STATES[k]; out[SIDX[st[0]]] += pi[k]; out[5 + SIDX[st[1]]] += pi[k]; }
+  return out;
+}
+
+/** Intake from a joint law: g at own patch (s2 g if the partner is joined), s2 g while joined. */
+export function jointIntake(pi, p, out = new Float64Array(2)) {
+  const s = Math.min(1, p.c / 2), P = st => pi[JIDX[st]];
+  out[0] = p.g * (P('OS') + P('OO') + P('OM') + P('OW') + s * P('OJ') + s * P('JO'));
+  out[1] = p.g * (P('SO') + P('OO') + P('MO') + P('WO') + s * P('JO') + s * P('OJ'));
+  return out;
+}
+
+/** Master-equation right-hand side dP/dt = P Q, allocation-free given a prebuilt Q. */
+export function derivsJoint(P, Q, out) {
+  for (let j = 0; j < NJ; j++) { let acc = 0; for (let i = 0; i < NJ; i++) acc += P[i] * Q[i * NJ + j]; out[j] = acc; }
+  return out;
+}
+export function initialJoint() { const P = new Float64Array(NJ); P[0] = 1; return P; }
+
+/**
+ * Steady state (dispatcher). Default closure 'joint' (v2): returns { y: marginals (10), e, G, pi }.
+ * closure 'meanfield' (v1) integrates the per-animal ODE of §2.
+ */
+export function steadyState(p, opts) {
+  if (p.closure === 'meanfield') return steadyStateMeanField(p, opts);
+  const pi = steadyStateJoint(p), e = jointIntake(pi, p);
+  return { y: marginals(pi), e: [e[0], e[1]], G: e[0] + e[1], pi };
+}
+
+/** Critical accuracy a_crit(d) for a lone listener (renewal–reward closed form, §10). */
+export function aCrit(p, d = p.d) {
+  const r0 = rates({ ...p, d }), L = r0.lambda, om = r0.omega, mu = p.mu;
+  const r = L / (L + mu), P = om / (om + mu), tW = 1 / (om + mu), tJ = 1 / mu, tM = d / p.v + p.tauG, s = Math.min(1, p.c / 2);
+  return (r * tM / (P * s / mu - r * (tW + P * tJ - tM))) / p.q0;
 }
 
 /** Pair intake G(d) at separation d (all other params from p). */
@@ -167,23 +251,31 @@ export function phaseLine(p, { dMin = 20, dMax = 900, n = 90 } = {}) {
  */
 export function layerCField(p, h, beta) {
   const base = { ...p, h1: h, h2: h, beta1: beta, beta2: beta };
-  const G1 = q => { const e = steadyState(q).e; return e[0] + (p.k || 0) * e[1]; };   // π_1 = G_1 + k G_2 (AM3)
+  const G1 = q => { const e = steadyState(q).e; return e[0] + (p.kappaRel || 0) * e[1]; };   // π_1 = G_1 + κ_rel G_2 (AM3)
   const dh = p.rh * h * (1 - h) * (G1({ ...base, h1: 1 }) - G1({ ...base, h1: 0 })) / p.g;
   const db = p.rbeta * beta * (1 - beta) * (G1({ ...base, beta1: 1 }) - G1({ ...base, beta1: 0 })) / p.g;
   return [dh, db];
 }
 
-/** Minimum shared-fate weight k for honest–trusting (1,1) to be stable (AM3), by bisection; null if never. */
+/**
+ * Minimum shared-fate weight κ_rel for the honest–trusting corner (1,1) to be stable (AM3):
+ * need dG1_h + κ dG2_h > 0 and dG1_b + κ dG2_b > 0 (own and partner intake changes from animal 1's
+ * honesty / trust at the corner). Returns null if no κ in [0,1] works (Python: k_crit).
+ */
 export function kCrit(p) {
-  const ok = k => { const g = layerCGains({ ...p, k }, 0.97, 0.97); return g.honestGain > 0 && g.trustGain > 0; };
-  if (ok(0)) return 0; if (!ok(1)) return null;
-  let lo = 0, hi = 1; for (let i = 0; i < 16; i++) { const m = (lo + hi) / 2; ok(m) ? hi = m : lo = m; } return hi;
+  const base = { ...p, h1: 1, h2: 1, beta1: 1, beta2: 1 };
+  const E = q => steadyState(q).e;
+  const a1 = E({ ...base, h1: 1 }), a0 = E({ ...base, h1: 0 }), b1 = E({ ...base, beta1: 1 }), b0 = E({ ...base, beta1: 0 });
+  const comps = [[a1[0] - a0[0], a1[1] - a0[1]], [b1[0] - b0[0], b1[1] - b0[1]]];
+  let k = 0;
+  for (const [own, part] of comps) { if (own > 0) continue; if (part > 0) k = Math.max(k, -own / part); else return null; }
+  return k <= 1 ? k : null;
 }
 
 /** Payoff differences that drive Layer C (sign tells which corner is stable). */
 export function layerCGains(p, h, beta) {
   const base = { ...p, h1: h, h2: h, beta1: beta, beta2: beta };
-  const G1 = q => { const e = steadyState(q).e; return e[0] + (p.k || 0) * e[1]; };
+  const G1 = q => { const e = steadyState(q).e; return e[0] + (p.kappaRel || 0) * e[1]; };
   return { honestGain: G1({ ...base, h1: 1 }) - G1({ ...base, h1: 0 }), trustGain: G1({ ...base, beta1: 1 }) - G1({ ...base, beta1: 0 }) };
 }
 

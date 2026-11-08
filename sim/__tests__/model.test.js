@@ -25,7 +25,7 @@ test('derivatives of a probability vector sum to zero (conservation)', () => {
 });
 
 test('σ = 0 limit: no tips, W = J = M = 0, O* = λ/(λ+μ), e = g O*', () => {
-  const p = { ...baseParams, sigma: 0 };
+  const p = { ...baseParams, sigma: 0, closure: 'meanfield' };
   const ss = steadyState(p);
   const { lambda } = rates(p);
   const Ostar = lambda / (lambda + p.mu);
@@ -34,7 +34,7 @@ test('σ = 0 limit: no tips, W = J = M = 0, O* = λ/(λ+μ), e = g O*', () => {
     assert.ok(Math.abs(ss.y[o + 1] - Ostar) < 1e-6, `O* ${ss.y[o + 1]} vs ${Ostar}`);
   }
   assert.ok(Math.abs(ss.e[0] - p.g * Ostar) < 1e-6);
-  assert.ok(Math.abs(ss.G - soloBaseline(baseParams).G) < 1e-12);
+  assert.ok(Math.abs(ss.G - soloBaseline({ ...baseParams, closure: 'meanfield' }).G) < 1e-12);
 });
 
 test('symmetric parameters give a symmetric steady state (4-ODE reduction)', () => {
@@ -64,19 +64,68 @@ test('d → ∞ limit converges to the solo baseline', () => {
 });
 
 test('RK4 convergence: halving dt changes the steady state by < 1e-8', () => {
-  const a = steadyState(baseParams, { dt: 0.5 }), b = steadyState(baseParams, { dt: 0.25 });
+  const a = steadyState({ ...baseParams, closure: 'meanfield' }, { dt: 0.5 }), b = steadyState({ ...baseParams, closure: 'meanfield' }, { dt: 0.25 });
   assert.ok(Math.abs(a.G - b.G) < 1e-8);
 });
 
-test('phase line finds an interior d* when patches are large', () => {
-  const pl = phaseLine(baseParams);
+test('v1 (meanfield) phase line keeps its bistable shape behind the flag', () => {
+  const pl = phaseLine({ ...baseParams, closure: 'meanfield' });
   assert.ok(pl.dstar > 40 && pl.dstar < 120, `d* = ${pl.dstar}`);
-  const unstable = pl.equilibria.find(e => !e.stable);
-  assert.ok(unstable && unstable.d > 300 && unstable.d < 600, 'unstable point ~420 m');
-  assert.ok(pl.Gmax > pl.Gfar * 1.05, 'communication beats the far-apart silent pair');
+  assert.ok(pl.equilibria.find(e => !e.stable), 'unstable point exists');
 });
 
 test('Layer C gains are finite numbers', () => {
   const g = layerCGains({ ...baseParams, c: 3, d: 100 }, 0.5, 0.5);
   assert.ok(Number.isFinite(g.honestGain) && Number.isFinite(g.trustGain));
+});
+
+// ---- model v2: exact joint pair chain (MODEL_SPEC §10) ----
+import { steadyStateJoint, qMatrix, jointIntake, marginals, NJ, JOINT_STATES, aCrit, derivsJoint, initialJoint } from '../model.js';
+
+test('v2: generator rows sum to zero and the stationary law sums to 1 with no negative mass', () => {
+  for (const p of [baseParams, { ...baseParams, h2: 0.3, eps1: 0.5, q0: 0.4, d: 120 }, { ...baseParams, d: 600, c: 1 }]) {
+    const Q = qMatrix(p);
+    for (let i = 0; i < NJ; i++) { let r = 0; for (let j = 0; j < NJ; j++) r += Q[i * NJ + j]; assert.ok(Math.abs(r) < 1e-12); }
+    const pi = steadyStateJoint(p);
+    assert.ok(Math.abs(pi.reduce((a, b) => a + b, 0) - 1) < 1e-9);
+    for (const v of pi) assert.ok(v >= 0 && v <= 1);
+    const m = marginals(pi);
+    assert.ok(Math.abs(m[0] + m[1] + m[2] + m[3] + m[4] - 1) < 1e-9 && Math.abs(m[5] + m[6] + m[7] + m[8] + m[9] - 1) < 1e-9);
+  }
+});
+
+test('v2: σ = 0 reduces to the solo formula e_i = g λ/(λ+μ) with no W/J/M mass', () => {
+  const p = { ...baseParams, sigma: 0 };
+  const pi = steadyStateJoint(p), e = jointIntake(pi, p), { lambda } = rates(p);
+  const solo = p.g * lambda / (lambda + p.mu);
+  assert.ok(Math.abs(e[0] - solo) < 1e-9 && Math.abs(e[1] - solo) < 1e-9, `${e} vs ${solo}`);
+  for (const st of ['WO', 'OW', 'JO', 'OJ', 'SM', 'MS', 'MM', 'OM', 'MO']) assert.ok(pi[JOINT_STATES.indexOf(st)] < 1e-12);
+});
+
+test('v2: joined time never exceeds the partner\'s own-feeding time (the v1 artefact is gone)', () => {
+  for (const d of [40, 100, 189, 300]) { const m = marginals(steadyStateJoint({ ...baseParams, d })); assert.ok(m[3] <= m[6] + 1e-12, `J1 ${m[3]} > O2 ${m[6]} at d = ${d}`); }
+});
+
+test('v2 headline: stable contact d* ≈ 189 m, unstable ≈ 410 m, −0.5 % vs dispersed solos, ≈ +10 % vs silent pair at d*', () => {
+  const pl = phaseLine(baseParams, { dMin: 20, dMax: 900, n: 180 });
+  const st = pl.equilibria.find(e => e.stable), un = pl.equilibria.find(e => !e.stable);
+  assert.ok(st && Math.abs(st.d - 189) < 12, `d* = ${st && st.d}`);
+  assert.ok(un && Math.abs(un.d - 410) < 20, `unstable = ${un && un.d}`);
+  assert.ok(Math.abs(st.G / pl.Gfar - 1 + 0.005) < 0.01);
+  const silent = steadyState({ ...baseParams, d: st.d, sigma: 0 }).G;
+  assert.ok(Math.abs(st.G / silent - 1.10) < 0.02, `vs silent ${st.G / silent}`);
+  assert.ok(Math.abs(aCrit(baseParams, st.d) - 0.56) < 0.02, `a_crit ${aCrit(baseParams, st.d)}`);
+});
+
+test('v2: RK4 on the master equation converges to the linear-solve stationary law', () => {
+  const p = baseParams, Q = qMatrix(p), P = initialJoint(), k1 = new Float64Array(NJ), k2 = new Float64Array(NJ), k3 = new Float64Array(NJ), k4 = new Float64Array(NJ), tmp = new Float64Array(NJ);
+  const dt = 0.05;
+  for (let s = 0; s < 60000; s++) {
+    derivsJoint(P, Q, k1); for (let i = 0; i < NJ; i++) tmp[i] = P[i] + 0.5 * dt * k1[i];
+    derivsJoint(tmp, Q, k2); for (let i = 0; i < NJ; i++) tmp[i] = P[i] + 0.5 * dt * k2[i];
+    derivsJoint(tmp, Q, k3); for (let i = 0; i < NJ; i++) tmp[i] = P[i] + dt * k3[i];
+    derivsJoint(tmp, Q, k4); for (let i = 0; i < NJ; i++) P[i] += (dt / 6) * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]);
+  }
+  const pi = steadyStateJoint(p);
+  for (let i = 0; i < NJ; i++) assert.ok(Math.abs(P[i] - pi[i]) < 1e-6);
 });

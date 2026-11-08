@@ -7,7 +7,7 @@
 // 'J' joined, 'M' misled (walking to a believed location, then local search for τg).
 import { mulberry32, expRand, gaussRand } from './rng.js';
 import { makeSimplex, fbm, poissonDisk } from './noise.js';
-import { baseParams, rates, initialState, makeRK4, intake, NV } from './model.js';
+import { baseParams, rates, NV, NJ, qMatrix, derivsJoint, initialJoint, jointIntake, marginals } from './model.js';
 
 const TAU = Math.PI * 2;
 export const ARENA = Object.freeze({ w: 1000, h: 640, margin: 36 });
@@ -57,9 +57,18 @@ export function createWorld({ seed = abmDefaults.seed, params = {}, options = {}
   const cx = ARENA.w / 2, cy = ARENA.h / 2;
   const monkeys = [makeMonkey(0, cx - p.d / 2, cy + 20), makeMonkey(1, cx + p.d / 2, cy - 20)];
 
-  // ---- ODE companion -------------------------------------------------------
-  const rk4 = makeRK4(NV);
-  const ode = { y: initialState(), yn: new Float64Array(NV), e: new Float64Array(2), cum: [0, 0] };
+  // ---- ODE companion: model v2 master equation dP/dt = P Q, RK4, from P(SS) = 1 ----------
+  const ode = { P: initialJoint(), y: new Float64Array(NV), e: new Float64Array(2), cum: [0, 0],
+    Q: new Float64Array(NJ * NJ), k1: new Float64Array(NJ), k2: new Float64Array(NJ), k3: new Float64Array(NJ), k4: new Float64Array(NJ), tmp: new Float64Array(NJ) };
+  function stepJoint(dt) {
+    const { P, Q, k1, k2, k3, k4, tmp } = ode;
+    qMatrix(p, Q);
+    derivsJoint(P, Q, k1); for (let i = 0; i < NJ; i++) tmp[i] = P[i] + 0.5 * dt * k1[i];
+    derivsJoint(tmp, Q, k2); for (let i = 0; i < NJ; i++) tmp[i] = P[i] + 0.5 * dt * k2[i];
+    derivsJoint(tmp, Q, k3); for (let i = 0; i < NJ; i++) tmp[i] = P[i] + dt * k3[i];
+    derivsJoint(tmp, Q, k4); for (let i = 0; i < NJ; i++) P[i] += (dt / 6) * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]);
+    marginals(P, ode.y); jointIntake(P, p, ode.e);
+  }
 
   const world = {
     t: 0, params: p, options: opt, trees, monkeys, ode, rng, seed,
@@ -163,9 +172,8 @@ export function createWorld({ seed = abmDefaults.seed, params = {}, options = {}
         }
       }
 
-      // Layer A companion with the same parameters (d = target separation)
-      rk4(ode.y, p, dt, ode.yn); ode.y.set(ode.yn);
-      intake(ode.y, p, ode.e);
+      // Layer A companion (model v2 pair chain) with the same parameters (d = target separation)
+      stepJoint(dt);
       ode.cum[0] += ode.e[0] * dt; ode.cum[1] += ode.e[1] * dt;
     },
 

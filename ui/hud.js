@@ -7,7 +7,7 @@ export const SLIDERS = [
   { key: 'h2',    name: 'Honesty of B',      sym: 'h_2', min: 0, max: 1, step: 0.05, unit: '',    help: 'Probability the blue monkey tells the truth. 0 = always deceives.' },
   { key: 'beta',  name: 'Trust',             sym: 'β',   min: 0, max: 1, step: 0.05, unit: '',    help: 'Probability a listener acts on a call it hears (both animals).' },
   { key: 'c',     name: 'Patch capacity',    sym: 'c',   min: 0.5, max: 3, step: 0.1, unit: '',   help: 'Animal-equivalents a patch feeds. Below 2 the finder loses (1−c/2)·g while joined.' },
-  { key: 'k',     name: 'Shared fate',       sym: 'k',   min: 0, max: 1, step: 0.05, unit: '',    help: 'Relatedness weight in the Layer C payoff π_i = G_i + k·G_j. 0 = pure self-interest.' },
+  { key: 'kappaRel', name: 'Shared fate',     sym: 'κ_rel', min: 0, max: 1, step: 0.05, unit: '', help: 'Relatedness weight in the Layer C payoff π_i = G_i + κ_rel·G_j. 0 = pure self-interest.' },
   { key: 'sigma', name: 'Call rate',         sym: 'σ',   min: 0, max: 0.6, step: 0.02, unit: '/min', help: 'Calls per minute while feeding at an own-found patch. 0 = silent.' },
 ];
 const fmt = (v, s) => s.step >= 1 ? `${Math.round(v)} ${s.unit}`.trim() : `${v.toFixed(2)} ${s.unit}`.trim();
