@@ -11,13 +11,22 @@ const CSS = { A: '#FF8A3D', B: '#4FB3F6', ok: '#8FFFD8', wrong: '#FFD36B', lie: 
 /** Shared, renderer-independent illustration state. */
 function makeIllustration(R) {
   const rng = mulberry32(11);
-  const st = { d: 130, p: 1, z: 0, ripples: [], nextCall: 1.5 };
+  const st = { d: 130, p: 1, b: 1, z: 0, ripples: [], nextCall: 1.5 };
   const centre = i => ({ x: ARENA.w / 2 + (i ? 1 : -1) * st.d / 2, y: ARENA.h / 2 });
   const randIn = i => { const c = centre(i), a = rng() * TAU, r = R * 0.92 * Math.sqrt(rng()); return { x: c.x + Math.cos(a) * r, y: c.y + Math.sin(a) * r }; };
   const mk = [0, 1].map(i => { const p0 = randIn(i); return { id: i, x: p0.x, y: p0.y, px: p0.x, py: p0.y, ux: 1, uy: 0, target: randIn(i), pause: 0, state: 'S', callT: 0, emote: 'search', emoteT: 0, treeRef: null }; });
   const inOther = i => { const c = centre(1 - i); return Math.hypot(mk[i].x - c.x, mk[i].y - c.y) < R; };
   return {
     st, mk, centre,
+    /** Show food left: each tree's fruit = its full level × F_i(t)/F0 for the range(s) it lies in. */
+    setFood(trees, fA, fB) {
+      for (const tr of trees) {
+        if (tr.f0 === undefined) tr.f0 = tr.fruit;
+        const inA = Math.hypot(tr.x - centre(0).x, tr.y - centre(0).y) < R, inB = Math.hypot(tr.x - centre(1).x, tr.y - centre(1).y) < R;
+        const f = inA && inB ? (fA + fB) / 2 : inA ? fA : inB ? fB : 1;
+        tr.fruit = tr.f0 * f;
+      }
+    },
     step(dt) {
       for (const m of mk) {
         m.px = m.x; m.py = m.y; m.callT -= dt; m.emoteT -= dt;
@@ -34,9 +43,9 @@ function makeIllustration(R) {
       st.ripples = st.ripples.filter(r => r.age < 1.6);
       st.nextCall -= dt;
       if (st.nextCall <= 0) {
-        st.nextCall = 1.4 + rng() * 2.2;
-        if (inOther(0) && inOther(1)) {
-          const caller = rng() < 0.5 ? 0 : 1;
+        st.nextCall = (1.4 + rng() * 2.2) / Math.max(st.b, 0.05);        // more detail, more calling
+        if (st.b > 0 && inOther(0) && inOther(1)) {                       // contact only inside the overlap (x)
+          const caller = rng() < 0.5 ? 0 : 1;                             // true with chance q_A = p, q_B = p(1 − z)
           const kind = caller === 1 && rng() < st.z ? 'lie' : rng() < st.p ? 'ok' : 'wrong';
           mk[caller].callT = 0.8;
           st.ripples.push({ caller, kind, age: 0 });
@@ -84,9 +93,10 @@ export async function createV3Scene(host, R) {
   }
   layout(); app.renderer.on('resize', layout);
   return {
-    fallback: false, ill,
-    frame(dt) {
-      time += dt; ill.step(dt);
+    fallback: false, ill, setFood: (fA, fB) => ill.setFood(world.trees, fA, fB),
+    frame(dt, playing = true) {
+      const mdt = playing ? dt : 0;            // paused: monkeys and calls freeze, forest still redraws
+      time += dt; ill.step(mdt);
       rangeG.clear(); for (let i = 0; i < 2; i++) { const c = ill.centre(i); rangeTexturePath(rangeG, c.x, c.y, R, i ? COL.B : COL.A); }
       ripG.clear();
       for (const r of ill.st.ripples) {
@@ -96,7 +106,7 @@ export async function createV3Scene(host, R) {
         if (u < 0.7) ripG.circle(px, py, 5).fill({ color: col, alpha: 0.95 });
       }
       forest.update(dt, 1);
-      for (let i = 0; i < 2; i++) monkeys[i].update(ill.mk[i], ill.mk[i].x, ill.mk[i].y, dt, time, zoom);
+      for (let i = 0; i < 2; i++) monkeys[i].update(ill.mk[i], ill.mk[i].x, ill.mk[i].y, mdt, time, zoom);
       if (post) post.set(time, 1);
       app.render();
     },
@@ -113,15 +123,15 @@ export function createV3Fallback(host, R) {
   const resize = () => { dpr = Math.min(2, devicePixelRatio || 1); W = host.clientWidth || 1; H = host.clientHeight || 1; canvas.width = W * dpr; canvas.height = H * dpr; };
   new ResizeObserver(resize).observe(host); resize();
   return {
-    fallback: true, ill,
-    frame(dt) {
-      ill.step(dt);
+    fallback: true, ill, setFood: (fA, fB) => ill.setFood(world.trees, fA, fB),
+    frame(dt, playing = true) {
+      ill.step(playing ? dt : 0);
       const zoom = Math.max(W / ARENA.w, H / ARENA.h) * 1.02, shift = Math.min(90, H * 0.12);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.fillStyle = '#1b3024'; ctx.fillRect(0, 0, W, H);
       ctx.save(); ctx.translate(W / 2 - ARENA.w / 2 * zoom, H / 2 - ARENA.h / 2 * zoom - shift); ctx.scale(zoom, zoom);
       ctx.fillStyle = '#233c2c'; ctx.fillRect(0, 0, ARENA.w, ARENA.h);
       for (let i = 0; i < 2; i++) { const c = ill.centre(i); ctx.beginPath(); ctx.arc(c.x, c.y, R, 0, TAU); ctx.fillStyle = i ? 'rgba(79,179,246,.12)' : 'rgba(255,138,61,.12)'; ctx.fill(); ctx.strokeStyle = i ? CSS.B : CSS.A; ctx.globalAlpha = .6; ctx.lineWidth = 2 / zoom; ctx.stroke(); ctx.globalAlpha = 1; }
-      for (const tr of world.trees) { const r = tr.r * 1.2; ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(tr.x + 5, tr.y + 8, r * 1.2, r * .65, 0, 0, TAU); ctx.fill(); ctx.fillStyle = tr.species ? '#3f8f72' : '#4c9a4a'; ctx.beginPath(); ctx.arc(tr.x, tr.y, r, 0, TAU); ctx.fill(); ctx.fillStyle = '#FFD23F'; for (let k = 0; k < 7; k++) { const [a, rf] = tr.fruitSpots[k]; ctx.beginPath(); ctx.arc(tr.x + Math.cos(a) * r * rf * .8, tr.y + Math.sin(a) * r * rf * .7, 2.2, 0, TAU); ctx.fill(); } }
+      for (const tr of world.trees) { const r = tr.r * 1.2; ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(tr.x + 5, tr.y + 8, r * 1.2, r * .65, 0, 0, TAU); ctx.fill(); ctx.fillStyle = tr.species ? '#3f8f72' : '#4c9a4a'; ctx.beginPath(); ctx.arc(tr.x, tr.y, r, 0, TAU); ctx.fill(); ctx.fillStyle = '#FFD23F'; for (let k = 0, n = Math.round(7 * tr.fruit); k < n; k++) { const [a, rf] = tr.fruitSpots[k]; ctx.beginPath(); ctx.arc(tr.x + Math.cos(a) * r * rf * .8, tr.y + Math.sin(a) * r * rf * .7, 2.2, 0, TAU); ctx.fill(); } }
       for (const r of ill.st.ripples) { const a = ill.mk[r.caller], b = ill.mk[1 - r.caller], u = r.age / 1.6; ctx.strokeStyle = CSS[r.kind]; ctx.globalAlpha = (1 - u) * .85; ctx.lineWidth = 2.5 / zoom; ctx.beginPath(); ctx.arc(a.x, a.y, 6 + u * 120, 0, TAU); ctx.stroke(); if (u < .7) { const e = Math.min(1, u / .6); ctx.fillStyle = CSS[r.kind]; ctx.beginPath(); ctx.arc(a.x + (b.x - a.x) * e, a.y + (b.y - a.y) * e, 5, 0, TAU); ctx.fill(); } ctx.globalAlpha = 1; }
       for (let i = 0; i < 2; i++) { const m = ill.mk[i], ang = Math.atan2(m.uy, m.ux); ctx.fillStyle = i ? CSS.B : CSS.A; ctx.beginPath(); ctx.arc(m.x, m.y, 10, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.moveTo(m.x + Math.cos(ang) * 19, m.y + Math.sin(ang) * 19); ctx.lineTo(m.x + Math.cos(ang + 2.4) * 10, m.y + Math.sin(ang + 2.4) * 10); ctx.lineTo(m.x + Math.cos(ang - 2.4) * 10, m.y + Math.sin(ang - 2.4) * 10); ctx.fill(); ctx.fillStyle = '#fff'; ctx.font = '700 13px Inter, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(i ? 'B' : 'A', m.x, m.y - 16); }
       ctx.restore();
