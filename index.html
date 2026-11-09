@@ -23,6 +23,16 @@
 <button class="info" id="btn-info" aria-label="The equations">i</button>
 <div class="gfx-note" id="gfx-note" hidden>simplified graphics</div>
 
+<div class="hud" id="hud" hidden>
+  <div class="clock"><span id="r-clock">6 am</span><div class="day"><div id="r-day"></div></div></div>
+  <div class="total"><b id="r-total">0.0</b> <span class="unit">trees eaten</span> <span class="delta" id="r-delta"></span></div>
+  <div class="bars">
+    <div class="row"><span class="who a">A</span><div class="track"><div class="fill a" id="b-a"></div><div class="mark" id="m-a"></div></div><span class="num" id="n-a"></span></div>
+    <div class="row"><span class="who b">B</span><div class="track"><div class="fill b" id="b-b"></div><div class="mark" id="m-b"></div></div><span class="num" id="n-b"></span></div>
+  </div>
+  <div class="loners"><i></i>two loners: <span id="r-loners"></span></div>
+</div>
+
 <div class="panel">
   <div class="sliders">
     <label class="s"><span class="lab">Distance apart</span><span class="val" id="v-d"></span><input type="range" id="s-d" min="0" max="320" step="1" value="186"></label>
@@ -30,14 +40,7 @@
     <label class="s"><span class="lab">Detail</span><span class="val" id="v-b"></span><input type="range" id="s-b" min="0" max="100" step="1" value="100"></label>
     <label class="s"><span class="lab">B lies</span><span class="val" id="v-z"></span><input type="range" id="s-z" min="0" max="100" step="1" value="0"></label>
   </div>
-  <div class="result">
-    <div class="total">Total food: <b id="r-total"></b> <span class="unit">trees/day</span> <span class="delta" id="r-delta"></span></div>
-    <div class="bars">
-      <div class="row"><span class="who a">A</span><div class="track"><div class="fill a" id="b-a"></div><div class="mark" id="m-a"></div></div><span class="num" id="n-a"></span></div>
-      <div class="row"><span class="who b">B</span><div class="track"><div class="fill b" id="b-b"></div><div class="mark" id="m-b"></div></div><span class="num" id="n-b"></span></div>
-    </div>
-    <div class="loners"><i></i>two loners: <span id="r-loners"></span></div>
-  </div>
+  <button class="go" id="btn-go">Go</button>
 </div>
 
 <div class="modal" id="card" hidden><div class="card"><button class="x" id="card-close" aria-label="Close">×</button><div id="card-body"></div></div></div>

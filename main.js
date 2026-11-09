@@ -12,7 +12,16 @@ let scene;
 try { if (url.get('gpu') === 'none') throw new Error('forced fallback'); scene = await createV3Scene($('arena'), V3.R); }
 catch (e) { console.warn('Using Canvas2D fallback:', e && e.message); $('arena').innerHTML = ''; scene = createV3Fallback($('arena'), V3.R); $('gfx-note').hidden = false; }
 let last = performance.now(), running = true;
-function frame(now) { const dt = Math.min(0.05, (now - last) / 1000); last = now; if (running) scene.frame(dt); requestAnimationFrame(frame); }
+const DAY = 7;               // seconds of animation for one foraging day (T = 1 day)
+let playing = false, tDay = 0, result = null;
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (running) {
+    if (playing) { tDay = Math.min(1, tDay + dt / DAY); showDay(tDay); if (tDay >= 1) finish(); }
+    scene.frame(playing ? dt : 0);          // paused: forest frozen, ranges still follow the sliders
+  }
+  requestAnimationFrame(frame);
+}
 requestAnimationFrame(frame);
 document.addEventListener('visibilitychange', () => { running = !document.hidden; last = performance.now(); });
 
@@ -20,24 +29,46 @@ document.addEventListener('visibilitychange', () => { running = !document.hidden
 const S = { d: $('s-d'), p: $('s-p'), b: $('s-b'), z: $('s-z') };
 function read() { return { d: +S.d.value, p: S.p.value / 100, b: S.b.value / 100, z: S.z.value / 100 }; }
 const SCALE = 7;   // bar full width = 7 trees/day per monkey
-function update() {
-  const s = read(), r = food(s);
+const fmtPct = v => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)} %`;
+function labels() {
+  const s = read();
   $('v-d').textContent = `${s.d} m`; $('v-p').textContent = `${S.p.value} %`; $('v-b').textContent = `${S.b.value} %`; $('v-z').textContent = `${S.z.value} %`;
-  $('r-total').textContent = r.total.toFixed(1);
-  const dpct = 100 * (r.total / LONERS - 1);
-  $('r-delta').textContent = `${dpct >= 0 ? '+' : '−'}${Math.abs(dpct).toFixed(1)} %`; $('r-delta').className = 'delta ' + (dpct >= 0 ? 'up' : 'down');
-  for (const [i, k] of [[0, 'a'], [1, 'b']]) {
-    $('b-' + k).style.width = `${Math.max(0, Math.min(100, 100 * r.E[i] / SCALE))}%`;
-    $('n-' + k).textContent = r.E[i].toFixed(2);
-    $('m-' + k).style.left = `${100 * (LONERS / 2) / SCALE}%`;
-  }
-  $('r-loners').textContent = `${LONERS.toFixed(1)} (${(LONERS / 2).toFixed(2)} each)`;
   Object.assign(scene.ill.st, { d: s.d, p: s.p, z: s.z });
-  window.__v3 = { s, r };
 }
-for (const el of Object.values(S)) el.addEventListener('input', update);
+/** Food eaten by time t (fraction of the day): E_i(t) = F0 (1 − e^{−h_i t}) − c_i t. */
+function eatenAt(t) { return [0, 1].map(i => Math.max(0, V3.F0 * (1 - Math.exp(-result.h[i] * t)) - result.c[i] * t)); }
+function showDay(t) {
+  const hour = 6 + 12 * t, h12 = Math.floor(hour) % 12 || 12;
+  $('r-clock').textContent = `${h12} ${hour < 12 ? 'am' : 'pm'}`; $('r-day').style.width = `${100 * t}%`;
+  const E = t >= 1 ? result.E : eatenAt(t), tot = E[0] + E[1];
+  $('r-total').textContent = tot.toFixed(1);
+  for (const [i, k] of [[0, 'a'], [1, 'b']]) { $('b-' + k).style.width = `${Math.max(0, Math.min(100, 100 * E[i] / SCALE))}%`; $('n-' + k).textContent = E[i].toFixed(2); }
+  $('r-delta').textContent = '';
+}
+function finish() {
+  playing = false; showDay(1);
+  const dpct = 100 * (result.total / LONERS - 1);
+  $('r-delta').textContent = fmtPct(dpct); $('r-delta').className = 'delta ' + (dpct >= 0 ? 'up' : 'down');
+  $('btn-go').textContent = 'Go again'; $('btn-go').classList.remove('running');
+}
+function go() {
+  if (playing) { playing = false; $('btn-go').textContent = 'Go'; $('btn-go').classList.remove('running'); return; }   // pause
+  if (!result || tDay >= 1) { result = food(read()); tDay = 0; }
+  window.__v3 = { s: read(), r: result };
+  for (const k of ['a', 'b']) $('m-' + k).style.left = `${100 * (LONERS / 2) / SCALE}%`;
+  $('r-loners').textContent = `${LONERS.toFixed(1)} trees`;
+  $('hud').hidden = false; playing = true;
+  $('btn-go').textContent = 'Pause'; $('btn-go').classList.add('running');
+}
+function changed() {                       // any slider move cancels the current day
+  labels(); playing = false; result = null; tDay = 0;
+  $('hud').hidden = true; $('btn-go').textContent = 'Go'; $('btn-go').classList.remove('running');
+}
+for (const el of Object.values(S)) el.addEventListener('input', changed);
 for (const k of ['d', 'p', 'b', 'z']) if (url.has(k)) S[k].value = url.get(k);
-update();
+labels();
+$('btn-go').onclick = go;
+addEventListener('keydown', e => { if (e.key === ' ' && e.target.tagName !== 'INPUT') { e.preventDefault(); go(); } });
 
 // ---- the one info card --------------------------------------------------------------------
 const K = t => katex.renderToString(t, { displayMode: true, throwOnError: false });
