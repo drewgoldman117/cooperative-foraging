@@ -76,10 +76,10 @@ addEventListener('keydown', e => { if (e.key === ' ' && e.target.tagName !== 'IN
 const K = t => katex.renderToString(t, { displayMode: true, throwOnError: false });
 $('card-body').innerHTML = `
 ${K('\\frac{dF_i}{dt} = -h_i F_i,\\qquad \\frac{dE_i}{dt} = h_i F_i - c_i,\\qquad F_i(0)=F_0')}
-${K('h = r_0 + a(1-x) + g\\,b\\,x(1-x)\\,(q_{\\rm partner} - \\kappa\\, q_{\\rm self})')}${K('c = x\\,[\\,L(1-q_{\\rm partner})\\,b + C b^2\\,]')}
+${K('h_i = r_0 + a(1-x) + g\\,b\\,x(1-x)\\,(q_{\\rm partner} - \\kappa\\, q_{\\rm self})')}${K('c_i = x\\,[\\,L(1-q_{\\rm partner})\\,b + C b^2\\,]')}
 ${K('E_i(T) = F_0\\,(1-e^{-h_i T}) - c_i T,\\qquad q_A = p,\; q_B = p(1-z)')}
 <ul>
-<li><b>F</b> food left in a monkey's range; <b>E</b> food it has eaten.</li>
+<li><b>F<sub>i</sub></b> food left in monkey i's range; <b>E<sub>i</sub></b> food it has eaten (i = A, B). Total food = E<sub>A</sub> + E<sub>B</sub>.</li>
 <li><b>x</b> overlap of the two home ranges (radius 160 m), set by Distance apart.</li>
 <li><b>r₀</b> baseline finding; <b>a(1−x)</b> finds more when ranges don't overlap.</li>
 <li><b>x(1−x)</b> chance of contact × chance the news is new.</li>
