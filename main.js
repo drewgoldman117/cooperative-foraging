@@ -76,19 +76,19 @@ addEventListener('keydown', e => { if (e.key === ' ' && e.target.tagName !== 'IN
 const K = t => katex.renderToString(t, { displayMode: true, throwOnError: false });
 $('card-body').innerHTML = `
 ${K('\\frac{dF_i}{dt} = -h_i F_i,\\qquad \\frac{dE_i}{dt} = h_i F_i - c_i,\\qquad F_i(0)=F_0')}
-${K('h_i = r_0 + a(1-x) + g\\,b\\,x(1-x)\\,(q_{\\rm partner} - \\kappa\\, q_{\\rm self})')}${K('c_i = x\\,[\\,L(1-q_{\\rm partner})\\,b + C b^2\\,]')}
+${K('h_i = r_0 + a(1-x) + G\\,b\\,x(1-x)\\,(q_{\\rm partner} - \\kappa\\, q_{\\rm self})')}${K('c_i = x\\,[\\,L(1-q_{\\rm partner})\\,b + C b^2\\,]')}
 ${K('E_i(T) = F_0\\,(1-e^{-h_i T}) - c_i T,\\qquad q_A = p,\; q_B = p(1-z)')}
 <ul>
 <li><b>F<sub>i</sub></b> food left in monkey i's range; <b>E<sub>i</sub></b> food it has eaten (i = A, B). Total food = E<sub>A</sub> + E<sub>B</sub>.</li>
 <li><b>x</b> overlap of the two home ranges (radius 160 m), set by Distance apart.</li>
 <li><b>r₀</b> baseline finding; <b>a(1−x)</b> finds more when ranges don't overlap.</li>
 <li><b>x(1−x)</b> chance of contact × chance the news is new.</li>
-<li><b>q</b> chance a tip is true; <b>q_partner</b> term: good tips you get; <b>−κ q_self</b> term: half of each tree you share.</li>
+<li><b>q</b> chance a tip is true; <b>G</b> value of a tip; <b>q_partner</b> term: good tips you get; <b>−κ q_self</b> term: half of each tree you share.</li>
 <li><b>L(1−q_partner) b x</b> trips wasted on wrong or deceptive tips; <b>C b² x</b> effort of detailed calls.</li>
 <li>In the forest, each tree's fruit shows F(t) = F₀e<sup>−ht</sup> for its range; calls happen only in the overlap, more often with more detail, mint if true, yellow if wrong, pink if a lie.</li>
 <li><b>p</b> Accuracy, <b>b</b> Detail, <b>z</b> chance B lies (A is always honest).</li>
 </ul>
-<p class="k">F₀ = 10 trees, r₀ = a = 0.35/day, g = 2.4/day, κ = 0.5, L = 1.5, C = 0.5, T = 1 day. Two loners: 2F₀(1 − e<sup>−0.7</sup>) = ${LONERS.toFixed(2)} trees/day.</p>`;
+<p class="k">F₀ = 10 trees, r₀ = a = 0.35/day, G = 2.4/day, κ = 0.5, L = 1.5, C = 0.5, T = 1 day. Two loners: 2F₀(1 − e<sup>−0.7</sup>) = ${LONERS.toFixed(2)} trees/day.</p>`;
 $('btn-info').onclick = () => { $('card').hidden = false; };
 $('card-close').onclick = () => { $('card').hidden = true; };
 $('card').addEventListener('click', e => { if (e.target.id === 'card') $('card').hidden = true; });
